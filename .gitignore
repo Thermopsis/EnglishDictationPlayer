@@ -1,0 +1,11 @@
+/dist/
+/evidence/
+/tests/ui-build/
+.vs/
+*.user
+*.suo
+*.log
+Thumbs.db
+Desktop.ini
+.env
+.env.*

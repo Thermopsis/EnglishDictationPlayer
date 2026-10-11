@@ -1,0 +1,1135 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SoundTouch.Net</name>
+    </assembly>
+    <members>
+        <member name="T:SoundTouch.AntiAliasFilter">
+            <summary>
+            Anti-alias filter is used to prevent folding of high frequencies when
+            transposing the sample rate with interpolation.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.AntiAliasFilter.#ctor(System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.AntiAliasFilter"/> class.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.AntiAliasFilter.Length">
+            <summary>
+            Gets or sets the number of FIR filter taps, i.e. ~filter complexity.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.AntiAliasFilter.SetCutoffFreq(System.Double)">
+            <summary>
+            Sets new anti-alias filter cut-off edge frequency, scaled to sampling
+            frequency (nyquist frequency = 0.5). The filter will cut off the
+            frequencies than that.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.AntiAliasFilter.Evaluate(System.Span{System.Single},System.ReadOnlySpan{System.Single}@,System.Int32,System.Int32)">
+            <summary>
+            Applies the filter to the given sequence of samples.
+            </summary>
+            <remarks>
+            The amount of outputted samples is by value of 'filter length'
+            smaller than the amount of input samples.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.AntiAliasFilter.Evaluate(SoundTouch.FifoSampleBuffer@,SoundTouch.FifoSampleBuffer)">
+            <summary>
+            Applies the filter to the given src &amp; dest pipes, so that processed amount of
+            samples get removed from src, and produced amount added to dest.
+            </summary>
+            <remarks>
+            The amount of outputted samples is by value of 'filter length'
+            smaller than the amount of input samples.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.AntiAliasFilter.CalculateCoefficients">
+            <summary>
+            Calculate the FIR coefficients realizing the given cutoff-frequency.
+            </summary>
+        </member>
+        <member name="T:SoundTouch.Assets.Strings">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Argument_CoefficientsFilterNotDivisible">
+            <summary>
+              Looks up a localized string similar to FIR filter length not divisible by 8..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Argument_EmptyCoefficients">
+            <summary>
+              Looks up a localized string similar to Not allowed to set empty filter coefficients..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Argument_ExcessiveSampleRate">
+            <summary>
+              Looks up a localized string similar to Excessive samplerate..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Argument_IllegalNumberOfChannels">
+            <summary>
+              Looks up a localized string similar to Illegal number of channels..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.Argument_SampleRateTooSmall">
+            <summary>
+              Looks up a localized string similar to Sample-rate is too small to do beats detection..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_ChannelsUndefined">
+            <summary>
+              Looks up a localized string similar to Number of channels not defined..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_CoefficientsNotInitialized">
+            <summary>
+              Looks up a localized string similar to Coefficients are not initialized..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_OutputPipeOverwrite">
+            <summary>
+              Looks up a localized string similar to It is not allowed to overwrite the output pipe after it has been assigned..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_OutputPipeUnset">
+            <summary>
+              Looks up a localized string similar to The output pipe has not been assigned..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_OutputUndefined">
+            <summary>
+              Looks up a localized string similar to Output is undefined..
+            </summary>
+        </member>
+        <member name="P:SoundTouch.Assets.Strings.InvalidOperation_SampleRateUndefined">
+            <summary>
+              Looks up a localized string similar to Sample rate not defined..
+            </summary>
+        </member>
+        <member name="T:SoundTouch.BpmDetect">
+            <summary>
+            <para>Beats-per-minute (BPM) detection routine.</para>
+            <para>
+            The beat detection algorithm works as follows:
+            <list type="bullet">
+            <item>
+            Use function 'inputSamples' to input a chunks of samples to the class for
+            analysis. It's a good idea to enter a large sound file or stream in smallish
+            chunks of around few kilo-samples in order not to extinguish too much RAM memory.
+            </item>
+            <item>
+            Input sound data is decimated to approx 500 Hz to reduce calculation burden,
+            which is basically ok as low (bass) frequencies mostly determine the beat rate.
+            Simple averaging is used for anti-alias filtering because the resulting signal
+            quality isn't of that high importance.
+            </item>
+            <item>
+            Decimated sound data is enveloped, i.e. the amplitude shape is detected by
+            taking absolute value that's smoothed by sliding average. Signal levels that
+            are below a couple of times the general RMS amplitude level are cut away to
+            leave only notable peaks there.
+            </item>
+            <item>
+            Repeating sound patterns (e.g. beats) are detected by calculating short-term
+            auto-correlation function of the enveloped signal.
+            </item>
+            <item>
+            After whole sound data file has been analyzed as above, the bpm level is
+            detected by function 'getBpm' that finds the highest peak of the auto-correlation
+            function, calculates it's precise location and converts this reading to bpm's.
+            </item>
+            </list>
+            </para>
+            </summary>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.#ctor(System.Int32,System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.BpmDetect"/> class.
+            </summary>
+            <param name="numChannels">Number of channels in sample data.</param>
+            <param name="sampleRate">Sample rate in Hz.</param>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.InputSamples(System.ReadOnlySpan{System.Single},System.Int32)">
+            <summary>
+            Inputs a block of samples for analyzing: Envelopes the samples and then
+            updates the auto-correlation estimation. When whole song data has been input
+            in smaller blocks using this function, read the resulting bpm with 'getBpm'
+            method.
+            </summary>
+            <param name="samples">Pointer to input/working data buffer.</param>
+            <param name="numSamples">Number of samples to insert.</param>
+            <remarks>
+            Notice that data in 'samples' array can be disrupted in processing.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.GetBpm">
+            <summary>
+            Analyzes the results and returns the BPM rate. Use this method to read result
+            after whole song data has been input to the class by consecutive calls of
+            <see cref="M:SoundTouch.BpmDetect.InputSamples(System.ReadOnlySpan{System.Single},System.Int32)"/>.
+            </summary>
+            <returns>The beats-per-minute rate, or zero if detection failed.</returns>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.GetBeats(System.Span{System.Single},System.Span{System.Single})">
+            <summary>
+            Get beat position arrays.
+            </summary>
+            <remarks>
+            <para>
+            The array includes also really low beat detection values
+            in absence of clear strong beats. Consumer may wish to filter low values away.
+            </para>
+            <para>You can query a suitable array sized by calling this with NULL in "pos" &amp; "values".</para>
+            </remarks>
+            <param name="pos">receive array of beat positions.</param>
+            <param name="strength">receive array of beat detection strengths.</param>
+            <returns>The number of beats in the arrays.</returns>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.UpdateXCorr(System.Int32)">
+            <summary>
+            Updates auto-correlation function for given number of decimated samples that
+            are read from the internal 'buffer' pipe (samples aren't removed from the pipe
+            though).
+            </summary>
+            <param name="process_samples">How many samples are processed.</param>
+        </member>
+        <member name="M:SoundTouch.BpmDetect.Decimate(System.Span{System.Single}@,System.ReadOnlySpan{System.Single},System.Int32)">
+            <summary>
+            Decimates samples to approx. 500 Hz.
+            </summary>
+            <param name="dest">Destination buffer.</param>
+            <param name="src">Source sample buffer.</param>
+            <param name="numSamples">Number of samples to process.</param>
+            <returns>Number of output samples.</returns>
+        </member>
+        <member name="T:SoundTouch.Defaults">
+            <summary>
+            Default values for sound processing parameters.
+            </summary>
+            <remarks>
+            Notice that the default parameters are tuned for contemporary popular music
+            processing.
+            For speech processing applications these parameters suit better:
+            <code>
+                SEQUENCE_MS     = 40
+                SEEKWINDOW_MS   = 15
+                OVERLAP_MS      = 8
+            </code>
+            </remarks>
+        </member>
+        <member name="F:SoundTouch.Defaults.SEQUENCE_MS">
+            <summary>
+            <para>
+            Default length of a single processing sequence, in milliseconds.
+            This determines to how  long sequences the original sound is chopped
+            in the time-stretch algorithm.
+            </para>
+            <para>
+            The larger this value is, the lesser sequences are used in
+            processing. In principle a bigger value sounds better when slowing
+            down tempo, but worse when increasing tempo and vice versa.
+            </para>
+            <para>Increasing this value reduces computational burden &amp; vice versa.</para>
+            </summary>
+        </member>
+        <member name="F:SoundTouch.Defaults.USE_AUTO_SEQUENCE_LEN">
+            <summary>
+            Giving this value for the sequence length sets automatic parameter
+            value according to tempo setting (recommended).
+            </summary>
+        </member>
+        <member name="F:SoundTouch.Defaults.SEEKWINDOW_MS">
+            <summary>
+            <para>
+            Seeking window default length in milliseconds for algorithm that
+            finds the best possible  overlapping location. This determines from
+            how wide window the algorithm may look for an  optimal joining
+            location when mixing the sound sequences back together.
+            </para>
+            <para>
+            The bigger this window setting is, the higher the possibility to
+            find a better mixing position will become, but at the same time
+            large values may cause a "drifting" artifact because consequent
+            sequences will be taken at more uneven intervals.
+            </para>
+            <para>
+            If there's a disturbing artifact that sounds as if a constant
+            frequency was drifting  around, try reducing this setting.
+            </para>
+            <para>
+            Increasing this value increases computational burden &amp; vice versa.
+            <code>
+            // public const int SEEKWINDOW_MS       15
+            </code>
+            </para>
+            </summary>
+        </member>
+        <member name="F:SoundTouch.Defaults.USE_AUTO_SEEKWINDOW_LEN">
+            <summary>
+            Giving this value for the seek window length sets automatic
+            parameter value according to tempo setting (recommended).
+            </summary>
+        </member>
+        <member name="F:SoundTouch.Defaults.OVERLAP_MS">
+            <summary>
+            <para>
+            Overlap length in milliseconds. When the chopped sound sequences are
+            mixed back together,  to form a continuous sound stream, this
+            parameter defines over how long period the two  consecutive
+            sequences are let to overlap each other.
+            </para>
+            <para>
+            This shouldn't be that critical parameter. If you reduce the
+            DEFAULT_SEQUENCE_MS setting  by a large amount, you might wish to
+            try a smaller value on this.
+            </para>
+            <para>Increasing this value increases computational burden &amp; vice versa.</para>
+            </summary>
+        </member>
+        <member name="T:SoundTouch.FifoProcessor">
+            <summary>
+            <para>
+            Base-class for sound processing routines working in FIFO principle. With
+            this base  class it's easy to implement sound processing stages that can
+            be chained together, so that samples that are fed into beginning of the
+            pipe automatically go through  all the processing stages.
+            </para>
+            <para>
+            When samples are input to this class, they're first processed and then
+            put to  the FIFO pipe that's defined as output of this class. This
+            output pipe can be either other processing stage or a FIFO sample
+            buffer.
+            </para>
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.#ctor(SoundTouch.FifoSamplePipe)">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.FifoProcessor"/> class.
+            </summary>
+            <param name="output">The pipe where processed samples are put.</param>
+        </member>
+        <member name="P:SoundTouch.FifoProcessor.AvailableSamples">
+            <inheritdoc/>
+        </member>
+        <member name="P:SoundTouch.FifoProcessor.IsEmpty">
+            <inheritdoc/>
+        </member>
+        <member name="P:SoundTouch.FifoProcessor.Output">
+            <summary>
+            Gets the internal pipe where processed samples are put.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.PtrBegin">
+            <inheritdoc/>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.ReceiveSamples(System.Span{System.Single}@,System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.ReceiveSamples(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.AdjustAmountOfSamples(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:SoundTouch.FifoProcessor.SetOutPipe(SoundTouch.FifoSamplePipe)">
+            <summary>
+            Sets the output pipe.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">The output pipe is already set.</exception>
+        </member>
+        <member name="T:SoundTouch.FifoSampleBuffer">
+            <summary>
+            Sample buffer working in FIFO (first-in-first-out) principle. The class
+            takes care of storage size adjustment and data moving during
+            input/output operations.
+            </summary>
+            <remarks>
+            Notice that in case of stereo audio, one sample is considered to consist
+            of  both channel data.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.#ctor(System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.FifoSampleBuffer"/> class.
+            </summary>
+            <param name="numberOfChannels">Number of channels, 1=mono, 2=stereo; Default is stereo.</param>
+        </member>
+        <member name="P:SoundTouch.FifoSampleBuffer.AvailableSamples">
+            <inheritdoc />
+        </member>
+        <member name="P:SoundTouch.FifoSampleBuffer.IsEmpty">
+            <inheritdoc />
+        </member>
+        <member name="P:SoundTouch.FifoSampleBuffer.Channels">
+            <summary>
+            Gets or sets the number of channels.
+            </summary>
+            <remarks>1 = mono, 2 = stereo.</remarks>
+        </member>
+        <member name="P:SoundTouch.FifoSampleBuffer.Capacity">
+            <summary>
+            Gets the current capacity.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.PtrBegin">
+            <inheritdoc/>
+            <exception cref="T:System.InvalidOperationException">The buffer isn't initialized.</exception>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.PtrEnd(System.Int32)">
+            <summary>
+            <para>
+            Returns a pointer to the end of the used part of the sample buffer
+            (i.e.  where the new samples are to be inserted). This function may
+            be used for  inserting new samples into the sample buffer directly.
+            Please be careful not corrupt the book-keeping.
+            </para>
+            <para>
+            When using this function as means for inserting new samples, also
+            remember  to increase the sample count afterwards, by calling the
+            <see cref="M:SoundTouch.FifoSampleBuffer.PutSamples(System.Int32)"/> method.
+            </para>
+            </summary>
+            <param name="slackCapacity">How much free capacity (in samples)
+            there _at least_ should be so that the caller can successfully
+            insert the desired samples to the buffer. If necessary, the
+            function grows the buffer size to comply with this requirement.
+            </param>
+            <returns>Pointer to the end of the used part of the sample buffer.</returns>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Adds samples from the <paramref name="samples"/> memory position to
+            the sample buffer.
+            </summary>
+            <param name="samples">Pointer to samples.</param>
+            <param name="numSamples">Number of samples to insert.</param>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.PutSamples(System.Int32)">
+            <summary>
+            <para>
+            Adjusts the book-keeping to increase number of samples in the buffer
+            without  copying any actual samples.
+            </para>
+            <para>
+            This function is used to update the number of samples in the sample
+            buffer when accessing the buffer directly with <see cref="M:SoundTouch.FifoSampleBuffer.PtrEnd(System.Int32)"/>
+            function. Please be  careful though.
+            </para>
+            </summary>
+            <param name="numSamples">Number of samples been inserted.</param>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.ReceiveSamples(System.Span{System.Single}@,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.ReceiveSamples(System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.Clear">
+            <inheritdoc />
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.AdjustAmountOfSamples(System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.AddSilent(System.Int32)">
+            <summary>
+            Add silence to the end of the buffer.
+            </summary>
+            <param name="numSamples">Number of samples of silence.</param>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.Rewind">
+            <summary>
+            Rewind the buffer by moving data from position pointed by 'bufferPos' to real
+            beginning of the buffer.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoSampleBuffer.EnsureCapacity(System.Int32)">
+            <summary>
+            Ensures that the buffer has capacity for at least this many samples.
+            </summary>
+        </member>
+        <member name="T:SoundTouch.FifoSamplePipe">
+            <summary>
+            An abstract base class for classes that manipulate sound samples by operating like a
+            first-in-first-out pipe: New samples are fed into one end of the pipe with the
+            <see cref="M:SoundTouch.FifoSamplePipe.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)"/> function, and the processed
+            samples are received from the other end with the <see cref="M:SoundTouch.FifoSamplePipe.ReceiveSamples(System.Span{System.Single}@,System.Int32)"/>
+            method.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.FifoSamplePipe.AvailableSamples">
+            <summary>
+            Gets the number of samples currently available.
+            </summary>
+            <returns>Number of samples currently available.</returns>
+        </member>
+        <member name="P:SoundTouch.FifoSamplePipe.IsEmpty">
+            <summary>
+            Gets a value indicating whether there aren't any samples available
+            for outputting.
+            </summary>
+            <value><see langword="true"/> if there aren't any samples available for outputting; otherwise, <see langword="false"/>.</value>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.PtrBegin">
+            <summary>
+            <para>
+            This function if provided for accessing the output samples directly.
+            Please be careful for not corrupting the book-keeping.
+            </para>
+            <para>
+            When using this function to output samples, also remember to 'remove'
+            the output samples from the buffer by calling the <see cref="M:SoundTouch.FifoSamplePipe.ReceiveSamples(System.Int32)"/>
+            method.
+            </para>
+            </summary>
+            <returns>Memory buffer to the beginning of the output samples.</returns>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Adds samples from the <paramref name="samples"/> memory buffer to
+            the sample buffer.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.MoveSamples(SoundTouch.FifoSamplePipe@)">
+            <summary>
+            Moves samples from the <paramref name="other"/> pipe instance to
+            this instance.
+            </summary>
+            <param name="other">Other pipe instance where from the receive the
+            data.</param>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.ReceiveSamples(System.Span{System.Single}@,System.Int32)">
+            <summary>
+            Output samples from beginning of the sample buffer. Copies requested samples to
+            output buffer and removes them from the sample buffer. If there are less than
+            requested samples in the buffer, returns all that available.
+            </summary>
+            <param name="output">Buffer where to copy output samples.</param>
+            <param name="maxSamples">How many samples to receive at max.</param>
+            <returns>Returns the number of samples written to <paramref name="output"/>.</returns>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.ReceiveSamples(System.Int32)">
+            <summary>
+            Adjusts book-keeping so that given number of samples are removed from beginning of the
+            sample buffer without copying them anywhere.
+            </summary>
+            <param name="maxSamples">Remove this many samples from the beginning of pipe.</param>
+            <remarks>
+            Used to reduce the number of samples in the buffer when accessing the sample buffer directly.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.Clear">
+            <summary>
+            Clears all the samples.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.AdjustAmountOfSamples(System.Int32)">
+            <summary>
+            Allow trimming (downwards) amount of samples in pipeline.
+            </summary>
+            <param name="numSamples">The number of samples.</param>
+            <returns>Returns adjusted amount of samples.</returns>
+        </member>
+        <member name="M:SoundTouch.FifoSamplePipe.VerifyNumberOfChannels(System.Int32)">
+            <summary>
+            Asserts that the correct number of channels are specified.
+            </summary>
+            <param name="nChannels">The number of channels to verify.</param>
+            <returns><see langword="true"/> when the number of <paramref name="nChannels"/> are within bounds;
+            otherwise an <see cref="T:System.InvalidOperationException"/> is thrown.</returns>
+            <exception cref="T:System.InvalidOperationException">Illegal number of channels.</exception>
+        </member>
+        <member name="M:SoundTouch.FirFilter.Evaluate(System.Span{System.Single}@,System.ReadOnlySpan{System.Single}@,System.Int32,System.Int32)">
+            <summary>
+            Applies the filter to the given sequence of samples.
+            Note : The amount of outputted samples is by value of 'filter_length'
+            smaller than the amount of input samples.
+            </summary>
+            <returns>Number of samples copied to <paramref name="dest"/>.</returns>
+        </member>
+        <member name="T:SoundTouch.PeakFinder">
+            <summary>
+            <para>Peak detection routine.</para>
+            <para>
+            The routine detects highest value on an array of values and calculates the
+            precise peak location as a mass-center of the 'hump' around the peak value.
+            </para>
+            </summary>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.PeakFinder"/> class.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.DetectPeak(System.ReadOnlySpan{System.Single}@,System.Int32,System.Int32)">
+            <summary>
+            Detect exact peak position of the data vector by finding the largest peak 'hump'
+            and calculating the mass-center location of the peak hump.
+            </summary>
+            <param name="data">Data vector to be analyzed. The data vector has to be at least <paramref name="maxPos"/> items long.</param>
+            <param name="minPos">Min allowed peak location within the vector data.</param>
+            <param name="maxPos">Max allowed peak location within the vector data.</param>
+            <returns>The location of the largest base harmonic peak hump.</returns>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.CalcMassCenter(System.ReadOnlySpan{System.Single}@,System.Int32,System.Int32)">
+            <summary>
+            Calculates the mass center between given vector items.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.FindCrossingLevel(System.ReadOnlySpan{System.Single}@,System.Single,System.Int32,System.Int32)">
+            <summary>
+            Finds the data vector index where the monotonously decreasing signal crosses the
+            given level.
+            </summary>
+            <param name="data">Data vector.</param>
+            <param name="level">Goal crossing level.</param>
+            <param name="peakPosition">Peak position index within the data vectors.</param>
+            <param name="direction">Direction where to proceed from the peak: 1 = right, -1 = left.</param>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.FindTop(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Finds real 'top' of a peak hump from neighborhood of the given <paramref name="peakPosition"/>.
+            </summary>
+            <param name="data">Data vector.</param>
+            <param name="peakPosition">Peak position index within the data vectors.</param>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.FindGround(System.ReadOnlySpan{System.Single}@,System.Int32,System.Int32)">
+            <summary>
+            Finds the 'ground' level, i.e. smallest level between two neighboring peaks, to right-
+            or left-hand side of the given peak position.
+            </summary>
+            <param name="data">Data vector.</param>
+            <param name="peakPosition">Peak position index within the data vector.</param>
+            <param name="direction">Direction where to proceed from the peak: 1 = right, -1 = left.</param>
+        </member>
+        <member name="M:SoundTouch.PeakFinder.GetPeakCenter(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Get exact center of peak near given position by calculating local mass of center.
+            </summary>
+            <param name="data">Data vector.</param>
+            <param name="peakPosition">Peak position index within the data vector.</param>
+        </member>
+        <member name="T:SoundTouch.RateTransposer">
+            <summary>
+            <para>
+            Sample rate transposer. Changes sample rate by using linear interpolation
+            together with anti-alias filtering (first order interpolation with anti-
+            alias filtering should be quite adequate for this application).
+            </para>
+            <para>
+            Use either of the derived classes of 'RateTransposerInteger' or
+            'RateTransposerFloat' for corresponding integer/floating point tranposing
+            algorithm implementation.
+            </para>
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.RateTransposer"/> class.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.RateTransposer.IsEmpty">
+            <summary>
+            Gets a value indicating whether there aren't any samples available for outputting.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.RateTransposer.Latency">
+            <summary>
+            Gets the approximate initial input-output latency.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.GetOutputBuffer">
+            <summary>
+            Returns the output buffer object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.GetAAFilter">
+            <summary>
+            Return anti-alias filter object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.EnableAAFilter(System.Boolean)">
+            <summary>
+            Enables/disables the anti-alias filter. Zero to disable, nonzero to enable.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.IsAAFilterEnabled">
+            <summary>
+            Returns nonzero if anti-alias filter is enabled.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.SetRate(System.Double)">
+            <summary>
+            Sets new target rate. Normal rate = 1.0, smaller values represent slower
+            rate, larger faster rates.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.SetChannels(System.Int32)">
+            <summary>
+            Sets the number of channels, 1 = mono, 2 = stereo.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Adds 'numSamples' pcs of samples from the 'samples' memory position into
+            the input of the object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.Clear">
+            <summary>
+            Clears all the samples in the object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.RateTransposer.ProcessSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Transposes sample rate by applying anti-alias filter to prevent folding.
+            </summary>
+        </member>
+        <member name="T:SoundTouch.SettingId">
+            <summary>
+            Available setting IDs for the <see cref="M:SoundTouch.SoundTouchProcessor.SetSetting(SoundTouch.SettingId,System.Int32)"/>
+            &amp; <see cref="M:SoundTouch.SoundTouchProcessor.GetSetting(SoundTouch.SettingId)"/> methods.
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.UseAntiAliasFilter">
+            <summary>
+            Enable/disable anti-alias filter in pitch transposer (0 = disable).
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.AntiAliasFilterLength">
+            <summary>
+            Pitch transposer anti-alias filter length (8 .. 128 taps, default = 32).
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.UseQuickSeek">
+            <summary>
+            Enable/disable quick seeking algorithm in tempo changer routine
+            (enabling quick seeking lowers CPU utilization but causes a minor sound
+             quality compromising).
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.SequenceDurationMs">
+            <summary>
+            Time-stretch algorithm single processing sequence length in milliseconds. This determines
+            to how long sequences the original sound is chopped in the time-stretch algorithm.
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.SeekWindowDurationMs">
+            <summary>
+            Time-stretch algorithm seeking window length in milliseconds for algorithm that finds the
+            best possible overlapping location. This determines from how wide window the algorithm
+            may look for an optimal joining location when mixing the sound sequences back together.
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.OverlapDurationMs">
+            <summary>
+            Time-stretch algorithm overlap length in milliseconds. When the chopped sound sequences
+            are mixed back together, to form a continuous sound stream, this parameter defines over
+            how long period the two consecutive sequences are let to overlap each other.
+            </summary>
+        </member>
+        <member name="F:SoundTouch.SettingId.NominalInputSequence">
+            <summary>
+            <para>
+            Call <see cref="M:SoundTouch.SoundTouchProcessor.GetSetting(SoundTouch.SettingId)"/> with this ID to query processing
+            sequence size in samples.
+            This value gives approximate value of how many input samples you'll need to
+            feed into SoundTouch after initial buffering to get out a new batch of
+            output samples.
+            </para>
+            <para>
+            This value does not include initial buffering at beginning of a new processing
+            stream, use <see cref="F:SoundTouch.SettingId.InitialLatency"/> to get the initial buffering size.
+            </para>
+            </summary>
+            <remarks>
+            <list type="bullet">
+            <item>This is read-only parameter, i.e. <see cref="M:SoundTouch.SoundTouchProcessor.SetSetting(SoundTouch.SettingId,System.Int32)"/>
+            ignores this parameter</item>
+            <item>This parameter value is not constant but change depending on the
+            tempo/pitch/rate/sample-rate settings.</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="F:SoundTouch.SettingId.NominalOutputSequence">
+            <summary>
+            Call <see cref="M:SoundTouch.SoundTouchProcessor.GetSetting(SoundTouch.SettingId)"/> with this ID to query nominal
+            average processing output size in samples. This value tells approximate value
+            how many output samples SoundTouch outputs once it does DSP processing run for a
+            batch of input samples.
+            </summary>
+            <remarks>
+            <list type="bullet">
+            <item>This is read-only parameter, i.e. <see cref="M:SoundTouch.SoundTouchProcessor.SetSetting(SoundTouch.SettingId,System.Int32)"/>
+            ignores this parameter.</item>
+            <item>This parameter value is not constant but change depending on the
+            tempo/pitch/rate/sample-rate settings.</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="F:SoundTouch.SettingId.InitialLatency">
+            <summary>
+            <para>
+            Call <see cref="M:SoundTouch.SoundTouchProcessor.GetSetting(SoundTouch.SettingId)"/> with this ID to query
+            initial processing latency, i.e. approx. how many samples you'll need to enter
+            to SoundTouch pipeline before you can expect to get first batch of ready output
+            samples out.
+            </para>
+            <para>
+            After the first output batch, you can then expect to get approx.
+            <see cref="F:SoundTouch.SettingId.NominalOutputSequence"/> ready samples out for every
+            <see cref="F:SoundTouch.SettingId.NominalInputSequence"/> samples that you enter into SoundTouch.
+            </para>
+            <para>
+            Example:
+            <example>
+                processing with parameter -tempo=5
+                => initial latency = 5509 samples
+                   input sequence  = 4167 samples
+                   output sequence = 3969 samples
+            </example>
+            </para>
+            <para>
+            Accordingly, you can expect to feed in approx. 5509 samples at beginning of
+            the stream, and then you'll get out the first 3969 samples. After that, for
+            every approx. 4167 samples that you'll put in, you'll receive again approx.
+            3969 samples out.
+            </para>
+            <para>
+            This also means that average latency during stream processing is
+            <see cref="F:SoundTouch.SettingId.InitialLatency"/>-<see cref="F:SoundTouch.SettingId.NominalOutputSequence"/>/2, in the
+            above example case 5509-3969/2 = 3524 samples.
+            </para>
+            </summary>
+            <remarks>
+            <list type="bullet">
+            <item>This is read-only parameter, i.e. <see cref="M:SoundTouch.SoundTouchProcessor.SetSetting(SoundTouch.SettingId,System.Int32)"/>
+            ignores this parameter.</item>
+            <item>This parameter value is not constant but change depending on the
+            tempo/pitch/rate/sample-rate settings.</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="T:SoundTouch.SoundTouchProcessor">
+            <summary>
+            SoundTouch - main class for tempo/pitch/rate adjusting routines.
+            </summary>
+            <remarks>
+            <para>
+            - Initialize the SoundTouch object instance by setting up the sound
+            stream  parameters with functions <see cref="P:SoundTouch.SoundTouchProcessor.SampleRate"/> and
+            <see cref="P:SoundTouch.SoundTouchProcessor.Channels"/>, then set  desired tempo/pitch/rate settings
+            with the corresponding functions.
+            </para>
+            <para>
+            - The SoundTouch class behaves like a first-in-first-out pipeline: The
+            samples that are to be processed are fed into one of the pipe by calling
+            function <see cref="M:SoundTouch.SoundTouchProcessor.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)"/>, while the ready processed samples can
+            be read  from the other end of the pipeline with method
+            <see cref="M:SoundTouch.FifoProcessor.ReceiveSamples(System.Span{System.Single}@,System.Int32)"/>.
+            </para>
+            <para>
+            - The SoundTouch processing classes require certain sized 'batches' of
+            samples in order to process the sound. For this reason the classes
+            buffer  incoming samples until there are enough of samples available for
+            processing, then they carry out the processing step and consequently
+            make the processed samples available for outputting.
+            </para>
+            <para>
+            - For the above reason, the processing routines introduce a certain
+            'latency' between the input and output, so that the samples input to
+            SoundTouch may not be immediately available in the output, and neither
+            the amount of outputtable samples may not immediately be in direct
+            relationship with the amount of previously input samples.
+            </para>
+            <para>
+            - The tempo/pitch/rate control parameters can be altered during
+            processing. Please notice though that they aren't currently protected by
+            semaphores, so in multi-thread application external semaphore protection
+            may be required.
+            </para>
+            <para>
+            - This class utilizes classes <see cref="T:SoundTouch.TimeStretch"/> for tempo change
+            (without modifying pitch) and <see cref="T:SoundTouch.RateTransposer"/>
+            for changing the playback rate (that is, both  tempo and pitch in the
+            same ratio) of the sound. The third available control  'pitch' (change
+            pitch but maintain tempo) is produced by a combination of combining the
+            two other controls.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:SoundTouch.SoundTouchProcessor"/> class.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.VersionString">
+            <summary>
+            Gets the <c>SoundTouch</c> library version string.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.Version">
+            <summary>
+            Gets the <c>SoundTouch</c> library version Id.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.UnprocessedSampleCount">
+            <summary>
+            Gets the number of samples currently unprocessed.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.Channels">
+            <summary>
+            Gets or sets the number of channels.
+            </summary>
+            <value>1 = mono, 2 = stereo, n = multichannel.</value>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.Rate">
+            <summary>
+            Gets or sets the new rate control value.
+            </summary>
+            <value>Normal rate = 1.0, smaller values represent slower rate,
+            larger faster rates.</value>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.Tempo">
+            <summary>
+            Gets or sets the new tempo control value.
+            </summary>
+            <value>Normal tempo = 1.0, smaller values represent slower tempo, larger faster tempo.</value>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.RateChange">
+            <summary>
+            Gets or sets the rate control value as a difference in percents compared
+            to the original rate (-50 .. +100 %).
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.TempoChange">
+            <summary>
+            Gets or sets new tempo control value as a difference in percents compared
+            to the original tempo (-50 .. +100 %).
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.SampleRate">
+            <summary>
+            Gets or sets sample rate.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.Pitch">
+            <summary>
+            Gets or sets new pitch control value. Original pitch = 1.0, smaller values
+            represent lower pitches, larger values higher pitch.
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.PitchOctaves">
+            <summary>
+            Gets or sets pitch change in octaves compared to the original pitch
+            (-1.00 .. +1.00).
+            </summary>
+        </member>
+        <member name="P:SoundTouch.SoundTouchProcessor.PitchSemiTones">
+            <summary>
+            Gets or sets pitch change in semi-tones compared to the original pitch
+            (-12 .. +12).
+            </summary>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.GetInputOutputSampleRatio">
+            <summary>
+            <para>
+            Get ratio between input and output audio durations, useful for calculating
+            processed output duration: if you'll process a stream of N samples, then
+            you can expect to get out N * getInputOutputSampleRatio() samples.
+            </para>
+            <para>
+            This ratio will give accurate target duration ratio for a full audio track,
+            given that the the whole track is processed with same processing parameters.
+            </para>
+            <para>
+            If this ratio is applied to calculate intermediate offsets inside a processing
+            stream, then this ratio is approximate and can deviate +- some tens of milliseconds
+            from ideal offset, yet by end of the audio stream the duration ratio will become
+            exact.
+            </para>
+            <para>
+            Example: if processing with parameters "-tempo=15 -pitch=-3", the function
+            will return value 0.8695652... Now, if processing an audio stream whose duration
+            is exactly one million audio samples, then you can expect the processed
+            output duration  be 0.869565 * 1000000 = 869565 samples.
+            </para>
+            </summary>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.Flush">
+            <summary>
+            Flushes the last samples from the processing pipeline to the output.
+            Clears also the internal processing buffers.
+            </summary>
+            <remarks>
+            This function is meant for extracting the last samples of a sound
+            stream. This function may introduce additional blank samples in the end
+            of the sound stream, and thus it's not recommended to call this function
+            in the middle of a sound stream.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Adds samples from the <paramref name="samples"/> buffer into
+            the input of the object. Notice that sample rate _has_to_ be set before
+            calling this function, otherwise throws a <see cref="T:System.InvalidOperationException"/>.
+            </summary>
+            <param name="samples">The sample buffer to add as input.</param>
+            <param name="numSamples">Number of samples to insert.</param>
+            <exception cref="T:System.InvalidOperationException">Sample rate or number of channels not defined.</exception>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.ReceiveSamples(System.Span{System.Single}@,System.Int32)">
+            <summary>
+            Output samples from beginning of the sample buffer. Copies requested samples to
+            output buffer and removes them from the sample buffer. If there are less than
+            requested samples in the buffer, returns all that available.
+            </summary>
+            <param name="output">Buffer where to copy output samples.</param>
+            <param name="maxSamples">Number of samples in buffer.
+            Note that in case of stereo-sound a single sample contains data for both channels.
+            </param>
+            <returns>Returns the number of samples written to <paramref name="output"/>.</returns>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.ReceiveSamples(System.Int32)">
+            <summary>
+            Adjusts book-keeping so that given number of samples are removed from beginning of the
+            sample buffer without copying them anywhere.
+            </summary>
+            <param name="maxSamples">How many samples to receive at max.</param>
+            <remarks>
+            Used to reduce the number of samples in the buffer when accessing the sample buffer directly.
+            </remarks>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.Clear">
+            <summary>
+            Clears all the samples in the object's output and internal
+            processing buffers.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.SetSetting(SoundTouch.SettingId,System.Int32)">
+            <summary>
+            Changes a setting controlling the processing system behavior. See
+            the <see cref="T:SoundTouch.SettingId"/> enum for available setting IDs.
+            </summary>
+            <param name="settingId">Setting ID number.</param>
+            <param name="value">New setting value.</param>
+            <returns><see langword="true"/> if the setting was successfully changed;
+            otherwise <see langword="false"/>.</returns>
+        </member>
+        <member name="M:SoundTouch.SoundTouchProcessor.GetSetting(SoundTouch.SettingId)">
+            <summary>
+            Reads a setting controlling the processing system behavior. See the
+            <see cref="T:SoundTouch.SettingId"/> enum for available setting IDs.
+            </summary>
+            <param name="settingId">Setting ID number.</param>
+            <returns>The setting value.</returns>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetOutput">
+            <summary>
+            Returns the output buffer object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetInput">
+            <summary>
+            Returns the input buffer object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.SetTempo(System.Double)">
+            <summary>
+            Sets new target tempo. Normal tempo = 'SCALE', smaller values represent slower
+            tempo, larger faster tempo.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.Clear">
+            <inheritdoc />
+        </member>
+        <member name="M:SoundTouch.TimeStretch.ClearInput">
+            <summary>
+            Clears the input buffer.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.SetChannels(System.Int32)">
+            <summary>
+            Sets the number of channels, 1 = mono, 2 = stereo.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.EnableQuickSeek(System.Boolean)">
+            <summary>
+            Enables/disables the quick position seeking algorithm. <see langword="true"/> to disable,
+            <see langword="false"/> to enable.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.IsQuickSeekEnabled">
+            <summary>
+            Gets a value indicating whether the quick seeking algorithm is enabled.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.SetParameters(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Sets routing control parameters. These controls are certain time constants
+            defining how the sound is stretched to the desired duration.
+            </summary>
+            <param name="sampleRate">Sample-rate of the sound being processed (Hz).</param>
+            <param name="sequenceMS">Single processing sequence length (ms).</param>
+            <param name="seekwindowMS">Seeking window length for scanning the best overlapping position (ms).</param>
+            <param name="overlapMS">Sequence overlapping length (ms).</param>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetParameters(System.Int32@,System.Int32@,System.Int32@,System.Int32@)">
+            <summary>
+            Get routine control parameters, see setParameters() function.
+            Any of the parameters to this function can be <see langword="null"/>, in such case corresponding parameter
+            value isn't returned.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.PutSamples(System.ReadOnlySpan{System.Single}@,System.Int32)">
+            <summary>
+            Adds 'numsamples' pcs of samples from the 'samples' memory position into
+            the input of the object.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetInputSampleReq">
+            <summary>
+            return nominal input sample requirement for triggering a processing batch.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetOutputBatchSize">
+            <summary>
+            return nominal output sample amount when running a processing batch.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.GetLatency">
+            <summary>
+            return approximate initial input-output latency.
+            </summary>
+        </member>
+        <member name="M:SoundTouch.TimeStretch.ProcessSamples">
+            <summary>
+            Changes the tempo of the given sound samples.
+            Returns amount of samples returned in the "output" buffer.
+            The maximum amount of samples that can be returned at a time is set by
+            the 'set_returnBuffer_size' function.
+            </summary>
+        </member>
+        <member name="T:SoundTouch.TransposerBase">
+            <summary>
+            Abstract base class for transposer implementations (linear, advanced vs integer, float etc).
+            </summary>
+        </member>
+    </members>
+</doc>

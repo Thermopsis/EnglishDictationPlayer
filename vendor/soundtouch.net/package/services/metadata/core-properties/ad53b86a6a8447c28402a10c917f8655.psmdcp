@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<coreProperties xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">
+  <dc:creator>Olaf Woudenberg</dc:creator>
+  <dc:description>The SoundTouch library is originally written by Olli Parviainen in c++. 
+Although a .NET wrapper library is available, this library aims to be a complete rewrite in C#
+It is an open-source audio processing library that allows changing the sound tempo, pitch and playback rate parameters independently from each other:
+* Change tempo while maintaining the original pitch
+* Change pitch while maintaining the original tempo
+* Change playback rate that affects both tempo and pitch at the same time
+* Change any combination of tempo/pitch/rate</dc:description>
+  <dc:identifier>SoundTouch.Net</dc:identifier>
+  <version>2.3.2</version>
+  <keywords>audio signal processing sound stretch tempo pitch rate</keywords>
+  <lastModifiedBy>NuGet.Build.Tasks.Pack, Version=5.10.0.7240, Culture=neutral, PublicKeyToken=31bf3856ad364e35;</lastModifiedBy>
+</coreProperties>

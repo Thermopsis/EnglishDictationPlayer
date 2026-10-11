@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>SoundTouch.Net</id>
+    <version>2.3.2</version>
+    <title>SoundTouch.Net</title>
+    <authors>Olaf Woudenberg</authors>
+    <license type="expression">LGPL-2.1-or-later</license>
+    <licenseUrl>https://licenses.nuget.org/LGPL-2.1-or-later</licenseUrl>
+    <icon>logo.png</icon>
+    <projectUrl>https://github.com/owoudenberg/soundtouch.net</projectUrl>
+    <description>The SoundTouch library is originally written by Olli Parviainen in c++. 
+Although a .NET wrapper library is available, this library aims to be a complete rewrite in C#
+It is an open-source audio processing library that allows changing the sound tempo, pitch and playback rate parameters independently from each other:
+* Change tempo while maintaining the original pitch
+* Change pitch while maintaining the original tempo
+* Change playback rate that affects both tempo and pitch at the same time
+* Change any combination of tempo/pitch/rate</description>
+    <releaseNotes>* Updated the source-code to be in line with the 2.1.2 c++ release.
+* Disable anti-alias filter when switch 
+  SOUNDTOUCH_PREVENT_CLICK_AT_RATE_CROSSOVER defined because anti-alias 
+  filter cause slight click if the rate change crosses zero during 
+  processing
+* Rewrite of the Beats-per-Minute analysis algorithm for more reliable BPM detection
+* Migrated project files to sdk-style format
+* Migrated to use C# 8 syntax
+* Packaged library for .net standard, .net framework and .net core
+* Replaced function parameter value asserts with runtime exceptions
+* Added functions to get initial processing latency, duration ratio between the original input and processed output tracks, and clarified reporting of input/output batch sizes
+* Fixed issue that added brief sequence of silence to beginning of output audio
+* Adjusted algorithm parameters to reduce reverberating effect at tempo slowdown
+* Bugfix: Fixed a glitch that could cause negative array indexing in quick seek algorithm
+* Bugfix: flush() didn't properly flush final samples from the pipeline on 2nd time in case that soundtouch object instance was recycled and used for processing a second audio stream.
+* Added C# example application that uses SoundTouch.NET library for processing mp3 files.</releaseNotes>
+    <copyright>Copyright (c) Olaf Woudenberg 2011-2019</copyright>
+    <tags>audio signal processing sound stretch tempo pitch rate</tags>
+    <repository type="git" url="https://github.com/owoudenberg/soundtouch.net" branch="tags/2.3.2" commit="98e5b8fd2f8efed0ddf7c8f66b435bfb231659dc" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5">
+        <dependency id="System.Memory" version="4.5.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETFramework4.6.1">
+        <dependency id="System.Memory" version="4.5.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard1.1">
+        <dependency id="NETStandard.Library" version="1.6.1" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETCoreApp2.1" />
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Memory" version="4.5.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.1" />
+    </dependencies>
+  </metadata>
+</package>
