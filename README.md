@@ -2,6 +2,10 @@
 
 一个简单的 Windows 离线播放器，专注于自动分段、自动选段、手动选段和片段重复。
 
+**[下载 Windows 便携版](https://github.com/Thermopsis/EnglishDictationPlayer/releases/latest)** · 免费使用 · 作者 ThermoXu
+
+从 Releases 下载 `EnglishDictationPlayer-Portable.zip`，解压后双击 `英语听写播放器.exe`。GitHub 的 Code → Download ZIP 下载的是源码。
+
 ## 运行
 
 解压 `PhrasePlayer-Portable.zip`，进入 `PhrasePlayer` 文件夹，双击 `英语听写播放器.exe`。
