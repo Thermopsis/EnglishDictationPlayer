@@ -78,7 +78,7 @@ namespace PhrasePlayer {
             } finally { ResumeLayout(true); }
         }
         void ShowApplicationSettings() {
-            using (var dialog = new Form { Text = L("设置"), Font = Font, ClientSize = new Size(540, 410), FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MaximizeBox = false, MinimizeBox = false, Icon = Icon }) {
+            using (var dialog = new Form { Text = L("设置"), Font = Font, ClientSize = new Size(540, 446), FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MaximizeBox = false, MinimizeBox = false, Icon = Icon }) {
                 var theme = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(160, 28), Width = 350, AccessibleName = L("皮肤") };
                 theme.Items.AddRange(new object[] { L("默认模式"), L("黑色模式") }); theme.SelectedIndex = prefs.DarkMode ? 1 : 0;
                 var language = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(160, 82), Width = 350, AccessibleName = L("语言") };
@@ -92,15 +92,18 @@ namespace PhrasePlayer {
                 ratio.Enabled = adaptive.Checked; adaptive.CheckedChanged += delegate { ratio.Enabled = adaptive.Checked; };
                 var formula = new Label { Text = L("留白 = 片段时长 × 倍数，最多 120 秒"), AutoSize = true, Location = new Point(26, 266) };
                 dialog.Controls.AddRange(new Control[] { boundary, adaptive, ratio, formula });
-                var about = new Button { Text = L("关于"), Location = new Point(26, 306), Size = new Size(110, 34) };
-                var help = new Button { Text = L("帮助"), Location = new Point(148, 306), Size = new Size(110, 34) };
-                var save = new Button { Text = L("保存设置"), Location = new Point(384, 362), Size = new Size(126, 34), DialogResult = DialogResult.OK, Tag = "primary" };
-                var cancel = new Button { Text = L("取消"), Location = new Point(276, 362), Size = new Size(96, 34), DialogResult = DialogResult.Cancel };
+                var playOnNext = new CheckBox { Text = L("切换下一段时自动播放（含右方向键）"), AutoSize = true, Checked = prefs.PlayOnNext, Location = new Point(26, 300) };
+                dialog.Controls.Add(playOnNext);
+                var about = new Button { Text = L("关于"), Location = new Point(26, 342), Size = new Size(110, 34) };
+                var help = new Button { Text = L("帮助"), Location = new Point(148, 342), Size = new Size(110, 34) };
+                var save = new Button { Text = L("保存设置"), Location = new Point(384, 398), Size = new Size(126, 34), DialogResult = DialogResult.OK, Tag = "primary" };
+                var cancel = new Button { Text = L("取消"), Location = new Point(276, 398), Size = new Size(96, 34), DialogResult = DialogResult.Cancel };
                 about.Click += delegate { ShowInformation(dialog, false); }; help.Click += delegate { ShowInformation(dialog, true); };
                 dialog.Controls.AddRange(new Control[] { theme, language, hint, about, help, save, cancel });
                 dialog.AcceptButton = save; dialog.CancelButton = cancel; ApplyDialogAppearance(dialog);
                 if (dialog.ShowDialog(this) == DialogResult.OK) {
                     prefs.ShowBoundaryControls = boundary.Checked; prefs.AdaptiveGap = adaptive.Checked; prefs.GapMultiplier = ratio.Value; ApplyEditingOptions(); UpdateEnabled(); prefs.DarkMode = theme.SelectedIndex == 1; prefs.Language = language.SelectedIndex == 1 ? "en" : "zh";
+                    prefs.PlayOnNext = playOnNext.Checked;
                     SavePreferences(); RefreshLanguage(); ApplyAppearance();
                     status.Text = loading ? L("正在分析音频…") : running ? (waiting ? L("停止") : output != null && output.PlaybackState == NAudio.Wave.PlaybackState.Paused ? L("已暂停") : L("播放")) : L("设置已保存");
                 }

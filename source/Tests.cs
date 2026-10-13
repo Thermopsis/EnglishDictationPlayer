@@ -7,7 +7,7 @@ using System.Threading;
 using NAudio.Wave;
 
 namespace PhrasePlayer {
-    public static class Tests {
+    public static partial class Tests {
         static readonly List<string> results = new List<string>();
         static void Require(bool condition, string reason) { if (!condition) throw new Exception(reason); }
         static void Check(string title, Action test) {
@@ -37,6 +37,7 @@ namespace PhrasePlayer {
             Directory.CreateDirectory(directory);
             string wav = Path.Combine(directory, "分段测试.wav"), mp3 = Path.Combine(directory, "分段测试.mp3"), aac = Path.Combine(directory, "分段测试.m4a");
             MakeFixture(wav, 10);
+            LessonChecks(directory, wav);
             Check("merge, cursor split, undo copy and boundary clamps", delegate {
                 var list = new List<Phrase> { new Phrase(1, 2), new Phrase(3, 5) };
                 var copy = PhraseEditor.Copy(list);
@@ -61,11 +62,12 @@ namespace PhrasePlayer {
                 Preferences old;
                 using (var reader = new StringReader("<Preferences><Plays>5</Plays><MaxLength>12</MaxLength></Preferences>")) old = (Preferences)serializer.Deserialize(reader);
                 Require(old.Plays == 5 && old.MaxLength == 12 && old.Language == "zh" && !old.DarkMode, "legacy defaults");
-                old.Language = "en"; old.DarkMode = true;
+                Require(!old.PlayOnNext, "legacy next-play default changed");
+                old.Language = "en"; old.DarkMode = true; old.TeacherMode = true; old.PlayOnNext = true;
                 using (var memory = new MemoryStream()) {
                     serializer.Serialize(memory, old); memory.Position = 0;
                     var saved = (Preferences)serializer.Deserialize(memory);
-                    Require(saved.DarkMode && saved.Language == "en" && saved.Plays == 5 && saved.MaxLength == 12, "new preferences lost");
+                    Require(saved.DarkMode && saved.Language == "en" && saved.Plays == 5 && saved.MaxLength == 12 && saved.TeacherMode && saved.PlayOnNext, "new preferences lost");
                 }
             });
             Check("Chinese and English labels, format placeholders, author and help", delegate {

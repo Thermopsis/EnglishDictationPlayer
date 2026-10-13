@@ -14,6 +14,7 @@ namespace PhrasePlayer {
         public int Plays = 3;
         public decimal Gap = 1;
         public bool AutoNext = false;
+        public bool PlayOnNext = false;
         public decimal MaxLength = 8;
         public decimal MinLength = 2;
         public bool MergeShort = true;
@@ -23,6 +24,7 @@ namespace PhrasePlayer {
         public decimal LeadingPadding = 0.3m; public bool ShowBoundaryControls = false; public bool AdaptiveGap = false; public decimal GapMultiplier = 2;
         public bool DarkMode = false;
         public string Language = "zh";
+        public bool TeacherMode = false;
     }
     public sealed partial class PlayerForm : Form {
         readonly Color background = Color.FromArgb(245, 248, 249), accent = Color.FromArgb(0, 125, 112), muted = Color.FromArgb(99, 118, 127);
@@ -109,10 +111,11 @@ namespace PhrasePlayer {
             StyleButton(whole, L("从头播放到尾"), false); whole.Size = new Size(140, 36); whole.Margin = new Padding(0, 0, 12, 0); extra.Controls.Add(whole);
             extra.Controls.Add(InlineLabel(L("倍速"), 43));
             speed.DropDownStyle = ComboBoxStyle.DropDownList; speed.Items.AddRange(new object[] { L("0.5 倍"), L("0.8 倍"), L("1.0 倍"), L("1.2 倍"), L("1.5 倍"), L("2.0 倍") }); speed.Width = 94; speed.Margin = new Padding(0, 4, 0, 0); speed.AccessibleName = L("播放倍速"); speed.SelectedIndex = Array.IndexOf(Speeds, prefs.Speed); if (speed.SelectedIndex < 0) speed.SelectedIndex = 2; extra.Controls.Add(speed);
+            BuildTeacherTools(extra);
             controlRows.Controls.Add(controls, 0, 0); controlRows.Controls.Add(extra, 0, 1); root.Controls.Add(controlRows, 0, 7); BuildEditing(root);
             status.Text = L("空格：播放 / 暂停    ← →：切换片段    Enter：从头重播");
             status.Dock = DockStyle.Fill; status.ForeColor = muted; status.TextAlign = ContentAlignment.MiddleLeft; status.AutoEllipsis = true; root.Controls.Add(status, 0, 8);
-            open.Click += delegate { using (var dialog = new OpenFileDialog { Title = L("打开音频"), Filter = L("音频文件|*.mp3;*.wav;*.m4a;*.aac;*.wma;*.flac;*.mp4|所有文件|*.*") }) if (dialog.ShowDialog(this) == DialogResult.OK) LoadFile(dialog.FileName); };
+            open.Click += delegate { using (var dialog = new OpenFileDialog { Title = L("打开音频或课件"), Filter = L("音频或听写课件|*.edlesson;*.mp3;*.wav;*.m4a;*.aac;*.wma;*.flac;*.mp4|听写课件|*.edlesson|所有文件|*.*") }) if (dialog.ShowDialog(this) == DialogResult.OK) LoadFile(dialog.FileName); };
             previous.Click += delegate { MovePhrase(-1); }; next.Click += delegate { MovePhrase(1); }; play.Click += delegate { Toggle(); };
             whole.Click += delegate { if (audio == null || loading) return; Stop(); wholeFile = true; running = true; StartClip(); };
             speed.SelectedIndexChanged += delegate {
@@ -129,7 +132,7 @@ namespace PhrasePlayer {
             split.Click += delegate { ShowSettings(); };
             settings.Click += delegate { ShowApplicationSettings(); };
             wave.SelectAt += delegate(double t) { if (segments.Count > 0) { Choose(Nearest(t)); wave.EditTime = t; UpdateEnabled(); wave.Invalidate(); } };
-            wave.SelectRange += delegate(double a, double b) { Stop(); index = -1; selection = new Phrase(a, b) { Manual = true }; UpdateSelection(); };
+            wave.SelectRange += delegate(double a, double b) { Stop(); index = -1; selection = new Phrase(a, b) { Manual = true }; lessonDirty = true; UpdateSelection(); };
             wave.ViewChanged += UpdateScroll;
             scroll.Scroll += delegate { if (!updating && audio != null) { wave.ViewStart = scroll.Value / 1000.0; wave.Invalidate(); } };
             repeat.SelectedIndexChanged += delegate { SavePreferences(); }; gap.ValueChanged += delegate { SavePreferences(); }; autoNext.CheckedChanged += delegate { SavePreferences(); };
@@ -138,9 +141,10 @@ namespace PhrasePlayer {
             clock.Interval = 30; clock.Tick += Tick; clock.Start();
             Shown += delegate { if (startupFile != null && File.Exists(startupFile)) LoadFile(startupFile); };
             FormClosing += delegate(object sender, FormClosingEventArgs e) {
+                if (!closing && !loading && !ConfirmDiscard()) { e.Cancel = true; return; }
                 closing = true;
                 if (loading) { e.Cancel = true; if (loadCancellation != null) loadCancellation.Cancel(); Stop(); status.Text = L("正在关闭…"); return; }
-                Stop(); clock.Stop(); clock.Dispose(); SavePreferences(); if (audio != null) audio.Dispose();
+                Stop(); clock.Stop(); clock.Dispose(); SavePreferences(); if (audio != null) audio.Dispose(); if (openedLesson != null) openedLesson.Dispose();
             };
             RefreshLanguage(); ApplyAppearance(); UpdateEnabled();
         }
@@ -153,25 +157,39 @@ namespace PhrasePlayer {
         }
         async void LoadFile(string path) {
             if (loading || closing) return;
+            if (!ConfirmDiscard()) return;
             Stop(); loading = true; UpdateEnabled(); status.Text = L("正在分析音频…");
             loadCancellation = new CancellationTokenSource(); var token = loadCancellation.Token;
+            OpenLesson candidate = null; AudioAnalysis result = null;
             try {
-                AudioAnalysis result = await Task.Run(() => AudioLoader.Load(path, token, percent => {
+                result = await Task.Run(() => {
+                    if (LessonFile.IsLesson(path)) candidate = LessonFile.Open(path, token);
+                    var decoded = AudioLoader.Load(candidate == null ? path : candidate.AudioPath, token, percent => {
                     if (!closing && IsHandleCreated) try { BeginInvoke((Action)(() => { if (loading && !closing) status.Text = L("正在分析音频… ") + percent + "%"; })); } catch (InvalidOperationException) {}
-                }));
-                if (closing || token.IsCancellationRequested) { result.Dispose(); return; }
+                    });
+                    if (candidate != null && Math.Abs(decoded.Duration - candidate.Manifest.Duration) > .05) { decoded.Dispose(); throw new InvalidDataException("Lesson duration does not match audio."); }
+                    return decoded;
+                });
+                if (closing || token.IsCancellationRequested) return;
                 if (audio != null) audio.Dispose(); audio = result;
+                result = null;
+                if (openedLesson != null) openedLesson.Dispose(); openedLesson = candidate; candidate = null;
+                sourceAudioPath = openedLesson == null ? Path.GetFullPath(path) : openedLesson.AudioPath;
+                originalAudioName = openedLesson == null ? Path.GetFileName(path) : openedLesson.Manifest.OriginalName;
+                lessonPath = openedLesson == null ? null : Path.GetFullPath(path);
                 wave.Audio = audio; wave.ViewStart = 0; wave.ViewLength = Math.Min(120, audio.Duration); wave.CursorTime = -1;
                 file.Text = Path.GetFileName(path) + "   ·   " + Waveform.FormatTime(audio.Duration);
-                Resegment();
+                if (openedLesson == null) { Resegment(); lessonDirty = false; } else RestoreLesson(openedLesson.Manifest);
             } catch (OperationCanceledException) {} catch (Exception e) {
                 if (!closing) { status.Text = L("打开失败，原有音频仍可使用。"); MessageBox.Show(this, L("无法打开这段音频。请确认文件有效且系统支持其格式。\n\n") + e.Message, L("打开音频"), MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             } finally {
+                if (result != null) result.Dispose(); if (candidate != null) candidate.Dispose();
                 loading = false; loadCancellation.Dispose(); loadCancellation = null;
                 if (closing && !IsDisposed) Close(); else if (!closing) UpdateEnabled();
             }
         }
         void Resegment() {
+            lessonDirty = true;
             Stop(); editHistory.Clear(); wave.EditTime = -1; segments = Segmenter.Split(audio, (double)prefs.MinLength, (double)prefs.MaxLength, (double)prefs.SilenceMs / 1000, prefs.Sensitivity, prefs.MergeShort, (double)prefs.LeadingPadding);
             wave.Phrases = segments;
             updating = true; phrases.Items.Clear();
@@ -200,7 +218,10 @@ namespace PhrasePlayer {
             if (index >= 0) target = index + direction;
             else if (direction > 0) { target = segments.FindIndex(p => p.Start >= selection.End - 0.001); if (target < 0) target = segments.Count - 1; }
             else { target = segments.FindLastIndex(p => p.End <= selection.Start + 0.001); if (target < 0) target = 0; }
-            Choose(Math.Max(0, Math.Min(segments.Count - 1, target)));
+            target = Math.Max(0, Math.Min(segments.Count - 1, target));
+            bool changed = target != index;
+            Choose(target);
+            if (changed && direction > 0 && prefs.PlayOnNext) { completed = 0; running = true; StartClip(); }
         }
         void UpdateSelection() {
             wave.Selected = selection; wave.CursorTime = -1; wave.EditTime = -1;
@@ -291,6 +312,7 @@ namespace PhrasePlayer {
             open.Enabled = !loading; play.Enabled = ready && (selection != null || wholeFile); previous.Enabled = next.Enabled = ready && segments.Count > 0;
             split.Enabled = ready; whole.Enabled = ready; phrases.Enabled = ready && segments.Count > 0; wave.Enabled = !loading;
             repeat.Enabled = gap.Enabled = autoNext.Enabled = speed.Enabled = !loading;
+            teacher.Enabled = !loading; saveLesson.Enabled = ready;
             UpdateEditingEnabled(ready); if (audio != null) UpdateScroll();
         }
         void SavePreferences() {

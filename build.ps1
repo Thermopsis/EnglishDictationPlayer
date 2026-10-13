@@ -12,7 +12,7 @@ $arguments = @('/nologo','/target:winexe','/platform:anycpu','/optimize+', '/cod
     ('/win32manifest:' + (Join-Path $root 'source\app.manifest')),
     ('/win32icon:' + (Join-Path $root 'source\AppIcon.ico')),
     ('/resource:' + (Join-Path $root 'source\AppIcon.ico') + ',PhrasePlayer.AppIcon.ico'),
-    '/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll','/reference:System.Xml.dll',
+    '/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll','/reference:System.Xml.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll',
     ('/reference:' + $library))
 $arguments += Get-ChildItem -LiteralPath (Join-Path $root 'source') -Filter '*.cs' | Select-Object -ExpandProperty FullName
 $arguments += $extraLibraries | ForEach-Object { '/reference:' + $_ }

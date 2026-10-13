@@ -3,6 +3,16 @@ using System.Collections.Generic;
 namespace PhrasePlayer {
     public static class Localization {
         public static readonly Dictionary<string, string> English = new Dictionary<string, string> {
+            { "切换下一段时自动播放（含右方向键）", "Play on Next (including Right arrow)" },
+            { "教师模式", "Teacher mode" }, { "保存课件", "Save lesson" },
+            { "打开音频或课件", "Open audio or lesson" },
+            { "音频或听写课件|*.edlesson;*.mp3;*.wav;*.m4a;*.aac;*.wma;*.flac;*.mp4|听写课件|*.edlesson|所有文件|*.*", "Audio or lesson|*.edlesson;*.mp3;*.wav;*.m4a;*.aac;*.wma;*.flac;*.mp4|Dictation lesson|*.edlesson|All files|*.*" },
+            { "听写课件|*.edlesson", "Dictation lesson|*.edlesson" },
+            { "请使用 .edlesson 扩展名保存课件。", "Please save with the .edlesson extension." },
+            { "正在保存课件…", "Saving lesson..." }, { "课件已保存：", "Lesson saved: " }, { "课件保存失败：", "Could not save lesson: " },
+            { "已恢复课件：{0} 段，未重新自动分段。", "Restored {0} lesson phrases without resegmenting." },
+            { "未保存的课件", "Unsaved lesson" },
+            { "分段修改尚未保存为课件。继续会丢失这些修改。\n请取消后点击“保存课件”，或确定放弃修改。", "Phrase edits have not been saved as a lesson. Continuing discards them.\nCancel and click Save lesson, or OK to discard edits." },
             { "合并下一段", "Merge next" }, { "在此拆分", "Split here" }, { "撤销", "Undo" },
             { "放大 +", "Zoom +" }, { "缩小 −", "Zoom -" }, { "显示全部", "Fit all" },
             { "起点 −0.1s", "Start -0.1s" }, { "起点 +0.1s", "Start +0.1s" }, { "终点 −0.1s", "End -0.1s" }, { "终点 +0.1s", "End +0.1s" },

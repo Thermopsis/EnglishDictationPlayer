@@ -39,7 +39,7 @@ namespace PhrasePlayer {
                 int pick = i; var b = new Button(); StyleButton(b, L(names[i]), false); b.Size = new Size(151, 32); b.Margin = new Padding(0, 0, 8, 0);
                 b.Click += delegate {
                     if (selection == null || audio == null || loading) return;
-                    Stop(); if (index >= 0) RememberEdit();
+                    Stop(); lessonDirty = true; if (index >= 0) RememberEdit();
                     PhraseEditor.Nudge(selection, pick < 2, pick % 2 == 0 ? -.1 : .1, index > 0 ? segments[index - 1].End : 0, index >= 0 && index + 1 < segments.Count ? segments[index + 1].Start : audio.Duration);
                     wave.EditTime = -1; UpdateSelection();
                 }; nudges.Controls.Add(b);
@@ -52,6 +52,7 @@ namespace PhrasePlayer {
         }
         void RememberEdit() { Stop(); if (editHistory.Count == 20) editHistory.RemoveAt(0); editHistory.Add(PhraseEditor.Copy(segments)); }
         void RebuildEdited(int target) {
+            lessonDirty = true;
             Stop(); wave.Phrases = segments; updating = true; phrases.Items.Clear();
             for (int i = 0; i < segments.Count; i++) phrases.Items.Add(string.Format(L("第 {0} 段   {1}"), i + 1, Waveform.FormatTime(segments[i].Start)));
             updating = false; Choose(target); UpdateEnabled();

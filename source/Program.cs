@@ -5,7 +5,7 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("英语听写播放器")]
 [assembly: AssemblyProduct("英语听写播放器")]
 [assembly: AssemblyCompany("ThermoXu")]
-[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
 
 namespace PhrasePlayer {
     static class Program {
