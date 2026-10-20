@@ -249,6 +249,7 @@ struct DictationApp: App {
     var body: some Scene {
         WindowGroup("英语听写播放器") {
             MainView(model: model).onAppear {
+                if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Main view appeared") }
                 delegate.model = model
                 if let url = delegate.pending { delegate.pending = nil; model.load(url) }
                 else if let index = CommandLine.arguments.firstIndex(of: "--open"), index + 1 < CommandLine.arguments.count { model.load(URL(fileURLWithPath: CommandLine.arguments[index + 1])) }

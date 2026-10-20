@@ -28,7 +28,18 @@ jobs:
       - name: Launch real macOS window
         run: |
           APP="$PWD/macOS/dist/English Dictation Player.app"
-          open -n -W "$APP" --args --open "$PWD/macOS/fixtures/windows-v1.1.edlesson" --ui-smoke --ui-output "$PWD/macOS/dist"
+          "$APP/Contents/MacOS/DictationPlayer" --open "$PWD/macOS/fixtures/windows-v1.1.edlesson" --ui-smoke --ui-output "$PWD/macOS/dist" > macOS/dist/UI_PROCESS.txt 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if ! kill -0 "$PID" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          if kill -0 "$PID" 2>/dev/null; then
+            /usr/bin/sample "$PID" 2 1 -file macOS/dist/UI_STACK.txt || true
+            kill "$PID" || true
+            echo 'FAIL UI smoke timeout' > macOS/dist/UI_TEST.txt
+          fi
+          cat macOS/dist/UI_PROCESS.txt
           cat macOS/dist/UI_TEST.txt
           grep -q 'PASS settings and segmentation sheets' macOS/dist/UI_TEST.txt
       - uses: actions/upload-artifact@v4

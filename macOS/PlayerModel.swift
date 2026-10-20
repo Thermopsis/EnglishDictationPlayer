@@ -116,6 +116,7 @@ final class PlayerModel: ObservableObject {
         if panel.runModal() == .OK, let url = panel.url { load(url) }
     }
     func load(_ url: URL) {
+        if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Load requested") }
         guard !busy, confirmDiscard() else { return }
         stop(); busy = true; status = l("正在分析音频…", "Analyzing audio...")
         let settings = prefs
@@ -142,6 +143,7 @@ final class PlayerModel: ObservableObject {
                         self.status = self.l("已分为 \(self.segments.count) 段。单击选段，拖动选区。", "Split into \(self.segments.count) phrases. Click to select; drag for a manual range.")
                     }
                     self.dirty = false; self.showSelection()
+                    if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Load complete") }
                     if CommandLine.arguments.contains("--ui-smoke") { UISmoke.run(self) }
                 }
             } catch {

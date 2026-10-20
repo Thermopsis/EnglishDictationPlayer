@@ -13,19 +13,18 @@ enum UISmoke {
         try? Data(message.utf8).write(to: output.appendingPathComponent("UI_TEST.txt"))
     }
     static func fail(_ message: String) { write("FAIL \(message)\n"); exit(1) }
+    static func note(_ message: String) { print("UI: \(message)"); fflush(stdout) }
     static func snapshot(_ name: String) {
+        note("Snapshot \(name)")
         guard let window = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 700 }) else { fail("No visible application window"); return }
         window.displayIfNeeded()
-        if let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
-            let bitmap = NSBitmapImageRep(cgImage: image)
-            if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: output.appendingPathComponent(name + ".png")); return }
-        }
         if let view = window.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
             view.cacheDisplay(in: view.bounds, to: bitmap)
             if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: output.appendingPathComponent(name + ".png")) }
         }
     }
     static func run(_ model: PlayerModel) {
+        note("Run model checks")
         let original = model.segments
         let preferences = model.prefs
         guard original.count == 2, let audio = model.audio, !model.busy else { fail("Lesson did not restore before UI test"); return }
@@ -59,7 +58,7 @@ enum UISmoke {
                             snapshot("segmentation-dark-en"); model.showSegmentation = false
                             model.prefs = preferences; model.dirty = false
                             write("PASS native window launch\nPASS Windows lesson restored without resegmentation\nPASS Next with autoplay disabled\nPASS split and merge preserve ranges\nPASS boundary adjustment and undo\nPASS manual selection\nPASS zoom and fit\nPASS Chinese/light and English/dark rendering\nPASS settings and segmentation sheets\n")
-                            model.cleanup(); NSApp.terminate(nil)
+                            model.cleanup(); note("Complete"); exit(0)
                         }
                     }
                 }
