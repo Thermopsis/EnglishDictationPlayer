@@ -8,6 +8,16 @@
 
 **v1.1 更新：**升级了音频分组后的保存功能，新增独立听写课件与下一段自动播放选项。
 
+
+## Mac 版
+
+已提供原生 **Mac 版 1.1**，支持 **macOS 13+、Apple Silicon 与 Intel**，同一个 Universal 应用，无需 Python、Node 或联网。
+
+**[下载 Mac 版 DMG / ZIP](https://github.com/Thermopsis/EnglishDictationPlayer/releases/tag/mac-v1.1)** · [Mac 使用说明](macOS/README.md) · [Mac 测试报告](macOS/TEST_REPORT.md)
+
+保留自动分段、重复与倍速、教师课件、下一段自动播放、双皮肤和中英文；常见格式的 `.edlesson` 可与 Windows v1.1 互通。首次打开可能需要确认未公证开发者。
+
+以下为 Windows 版说明，Mac 操作及 ⌘ 快捷键见上方 Mac 使用说明。
 ## 运行
 
 解压 `PhrasePlayer-Portable.zip`，进入 `PhrasePlayer` 文件夹，双击 `英语听写播放器.exe`。

@@ -4,7 +4,7 @@
 
 ## 运行
 
-解压 `EnglishDictationPlayer-Mac-Universal.zip`，将 `English Dictation Player.app` 拖到“应用程序”，然后打开。
+推荐打开 `EnglishDictationPlayer-Mac-Universal.dmg`，将 `English Dictation Player.app` 拖到“Applications / 应用程序”，然后从应用程序中打开。也可解压 `EnglishDictationPlayer-Mac-Universal.zip` 后复制应用。
 
 本次构建为 ad-hoc 本地签名，没有 Apple Developer ID 签名和公证。macOS 可能提示无法验证开发者。请只在确认下载来源后按系统提供的“右键 → 打开”或“系统设置 → 隐私与安全性 → 仍要打开”确认；不需要关闭 Gatekeeper 或修改系统安全策略。单位管理的 Mac 可能禁止运行未公证应用，此时需要管理员批准或后续提供 Developer ID 公证版。
 
@@ -36,4 +36,11 @@
 
 在 Mac 上运行 `bash macOS/build.sh`，使用 Xcode Command Line Tools 自带 Swift 编译器同时构建 arm64、x86_64，合并为 Universal 应用，添加图标与 ad-hoc 签名，输出 ZIP。没有第三方依赖。
 
-运行 `"macOS/dist/English Dictation Player.app/Contents/MacOS/DictationPlayer" --self-test` 执行分段、配置、课件、Windows 兼容及六档倍速原生离线渲染测试。GitHub Actions 在 Apple Silicon 和 Intel 两种 macOS 环境验证。最终测试结果及限制以 TEST_REPORT.md 为准。
+运行 `"macOS/dist/English Dictation Player.app/Contents/MacOS/DictationPlayer" --self-test` 执行分段、配置、课件及六档倍速原生离线渲染测试。设置 `WINDOWS_LESSON=macOS/fixtures/windows-v1.1.edlesson` 可同时验证 Windows 课件导入。GitHub Actions 在 Apple Silicon 和 Intel 两种 macOS 环境验证，17 项回归及 9 项原生窗口检查均通过。最终测试结果及限制见 [TEST_REPORT.md](TEST_REPORT.md)。
+
+
+## 界面预览
+
+![默认模式](screenshots/main-light-zh.png)
+
+![黑色模式与英文](screenshots/main-dark-en.png)
