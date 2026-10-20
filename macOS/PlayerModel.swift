@@ -268,7 +268,7 @@ final class WindowDelegate: NSObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         guard let model = model else { return true }
         if model.busy { NSSound.beep(); return false }
-        if model.confirmDiscard() { model.dirty = false; return true }; return false
+        if model.confirmDiscard() { model.dirty = false; model.stop(); return true }; return false
     }
 }
 

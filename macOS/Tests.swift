@@ -87,7 +87,8 @@ enum MacTests {
             let moved = output.appendingPathComponent("移动后.edlesson"); try? FileManager.default.removeItem(at: moved); try FileManager.default.moveItem(at: file, to: moved)
             let opened = try LessonFile.open(moved); defer { try? FileManager.default.removeItem(at: opened.directory) }
             try require(opened.manifest.segments == manifest.segments && opened.manifest.manual == manifest.manual && opened.manifest.originalName == manifest.originalName, "lesson metadata")
-            try require(try Data(contentsOf: opened.audio) == Data(contentsOf: wav), "audio bytes changed")
+            let embeddedBytes = try Data(contentsOf: opened.audio), sourceBytes = try Data(contentsOf: wav)
+            try require(embeddedBytes == sourceBytes, "audio bytes changed")
             try LessonFile.save(moved, audio: opened.audio, manifest: manifest)
             let reopened = try LessonFile.open(moved); defer { try? FileManager.default.removeItem(at: reopened.directory) }
             try require(reopened.manifest.segments == manifest.segments, "overwrite changed ranges")

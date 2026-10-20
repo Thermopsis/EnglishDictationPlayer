@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct WaveformView: View {
     @ObservedObject var model: PlayerModel
@@ -60,7 +61,7 @@ struct WaveformView: View {
 
 struct MainView: View {
     @ObservedObject var model: PlayerModel
-    let windowDelegate = WindowDelegate()
+    @State private var windowDelegate = WindowDelegate()
     var body: some View {
         VStack(spacing: 14) {
             header
