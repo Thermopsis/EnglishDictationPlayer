@@ -114,20 +114,7 @@ enum MacTests {
         }
         for rate in [0.5, 0.8, 1.0, 1.2, 1.5, 2.0] {
             check("AVAudioEngine offline \(rate)x: audible data, correct duration, preserved pitch") {
-                let engine = AVAudioEngine(), player = AVAudioPlayerNode(), pitch = AVAudioUnitTimePitch()
-                let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
-                engine.attach(player); engine.attach(pitch); engine.connect(player, to: pitch, format: format); engine.connect(pitch, to: engine.mainMixerNode, format: format)
-                pitch.rate = Float(rate); pitch.pitch = 0
-                try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 1024)
-                let input = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100)!; input.frameLength = 44100
-                for i in 0..<44100 { input.floatChannelData![0][i] = Float(0.3 * sin(2 * .pi * 440 * Double(i) / 44100)) }
-                player.scheduleBuffer(input); try engine.start(); player.play(); defer { player.stop(); engine.stop() }
-                let buffer = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: 1024)!
-                var samples = [Float](), attempts = 0
-                while samples.count < Int(44100 * (1 / rate + 0.5)) && attempts < 10000 {
-                    attempts += 1
-                    if try engine.renderOffline(1024, to: buffer) == .success { samples.append(contentsOf: UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength))) }
-                }
+                let samples = try renderTone(rate)
                 let audible = samples.indices.filter { abs(samples[$0]) > 0.01 }
                 try require(audible.count > 4000, "silent output")
                 let actual = Double(audible.last! - audible.first!) / 44100
@@ -141,5 +128,36 @@ enum MacTests {
         }
         print("RESULT \(passed) passed, \(failures) failed")
         return failures == 0 ? 0 : 1
+    }
+    static func renderTone(_ rate: Double) throws -> [Float] {
+        let engine = AVAudioEngine()
+        let player = AVAudioPlayerNode()
+        let pitch = AVAudioUnitTimePitch()
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        engine.attach(player); engine.attach(pitch)
+        engine.connect(player, to: pitch, format: format)
+        engine.connect(pitch, to: engine.mainMixerNode, format: format)
+        pitch.rate = Float(rate); pitch.pitch = 0
+        try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 1024)
+        let input = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100)!
+        input.frameLength = 44100
+        let angularStep: Double = 2.0 * Double.pi * 440.0 / 44100.0
+        for i in 0..<44100 { input.floatChannelData![0][i] = Float(0.3 * sin(angularStep * Double(i))) }
+        player.scheduleBuffer(input)
+        try engine.start(); player.play()
+        defer { player.stop(); engine.stop() }
+        let buffer = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: 1024)!
+        var samples = [Float]()
+        let expectedFrames = Int(44100.0 * (1.0 / rate + 0.5))
+        var attempts = 0
+        while samples.count < expectedFrames && attempts < 10000 {
+            attempts += 1
+            let status = try engine.renderOffline(1024, to: buffer)
+            if status == .success {
+                let chunk = UnsafeBufferPointer<Float>(start: buffer.floatChannelData![0], count: Int(buffer.frameLength))
+                samples.append(contentsOf: chunk)
+            }
+        }
+        return samples
     }
 }
