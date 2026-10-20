@@ -134,7 +134,7 @@ struct MainView: View {
     var playbackRow: some View {
         HStack(spacing: 12) {
             Button(model.l("上一段", "Previous")) { model.move(-1) }.disabled(!model.ready || model.segments.isEmpty)
-            Button(model.waiting ? model.l("停止", "Stop") : model.playing ? (model.paused ? model.l("继续", "Resume") : model.l("暂停", "Pause")) : model.l("播放", "Play")) { model.toggle() }.buttonStyle(.borderedProminent).frame(minWidth: 65).disabled(!model.ready || model.selection == nil)
+            Button(model.waiting ? model.l("停止", "Stop") : model.playing ? (model.paused ? model.l("继续", "Resume") : model.l("暂停", "Pause")) : model.l("播放", "Play")) { model.toggle() }.buttonStyle(.borderedProminent).frame(minWidth: 65).disabled(!model.ready || (model.selection == nil && !model.playing))
             Button(model.l("下一段", "Next")) { model.move(1) }.disabled(!model.ready || model.segments.isEmpty)
             Picker(model.l("播放次数", "Repeats"), selection: $model.prefs.plays) {
                 ForEach([1, 2, 3, 5, 10, 0], id: \.self) { n in Text(n == 0 ? model.l("无限", "Infinite") : "\(n)").tag(n) }
