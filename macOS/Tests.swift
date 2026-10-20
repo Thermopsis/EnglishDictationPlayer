@@ -40,6 +40,15 @@ enum MacTests {
             let phrases = Segmenter.split(audio, prefs)
             try require(phrases.count == 2 && abs(phrases[0].start - 0.7) < 0.011 && phrases[1].start >= phrases[0].end, "padding or overlap")
         }
+        check("10-minute recording analysis streams bounded audio chunks") {
+            let long = output.appendingPathComponent("long.wav")
+            defer { try? FileManager.default.removeItem(at: long) }
+            try autoreleasepool { try fixture(long, 600) }
+            let started = Date()
+            let analysis = try AudioAnalysis.load(long)
+            try require(abs(analysis.duration - 600) < 0.001 && analysis.energy.count == 60000, "long-file analysis lost frames")
+            print("METRIC 10-minute native decode milliseconds=\(Int(Date().timeIntervalSince(started) * 1000)), energyFrames=\(analysis.energy.count)")
+        }
         check("short introductory words merge forward and toggle off preserves them") {
             let audio = synthetic(10) { t in t < 2.5 || t >= 3.5 && t < 3.8 || t >= 4.3 && t < 7 ? 0.3 : 0 }
             var prefs = Preferences(); prefs.leading = 0.08
