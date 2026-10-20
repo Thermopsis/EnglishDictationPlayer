@@ -304,7 +304,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         window?.title = model.l("英语听写播放器", "English Dictation Player")
         let root = NSMenu()
         func submenu(_ title: String) -> NSMenu {
-            let item = NSMenuItem(); let menu = NSMenu(title: title); item.submenu = menu; root.addItem(item); return menu
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: ""); let menu = NSMenu(title: title); item.submenu = menu; root.addItem(item); return menu
         }
         func action(_ menu: NSMenu, _ title: String, _ selector: Selector, _ key: String = "") {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: key); item.target = self; menu.addItem(item)
