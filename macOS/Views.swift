@@ -61,7 +61,6 @@ struct WaveformView: View {
 
 struct MainView: View {
     @ObservedObject var model: PlayerModel
-    @State private var windowDelegate = WindowDelegate()
     var body: some View {
         VStack(spacing: 14) {
             header
@@ -88,7 +87,6 @@ struct MainView: View {
         }
         .onAppear {
             model.installShortcuts()
-            DispatchQueue.main.async { if let window = NSApp.windows.first(where: { $0.contentView != nil && $0.title != "" }) { windowDelegate.model = model; window.delegate = windowDelegate } }
         }
     }
     var header: some View {
@@ -240,27 +238,14 @@ struct InformationView: View {
 }
 
 @main
-struct DictationApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @StateObject var model = PlayerModel()
-    init() {
+struct DictationLauncher {
+    static func main() {
         if CommandLine.arguments.contains("--self-test") { exit(MacTests.run()) }
-    }
-    var body: some Scene {
-        WindowGroup("英语听写播放器") {
-            MainView(model: model).onAppear {
-                if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Main view appeared") }
-                delegate.model = model
-                if let url = delegate.pending { delegate.pending = nil; model.load(url) }
-                else if let index = CommandLine.arguments.firstIndex(of: "--open"), index + 1 < CommandLine.arguments.count { model.load(URL(fileURLWithPath: CommandLine.arguments[index + 1])) }
-            }
-        }.defaultSize(width: 1020, height: 630)
-        .commands {
-            CommandGroup(replacing: .newItem) { Button(model.l("打开音频或课件…", "Open audio or lesson...")) { model.openPanel() }.keyboardShortcut("o").disabled(model.busy) }
-            CommandGroup(replacing: .saveItem) { Button(model.l("保存课件…", "Save lesson...")) { model.saveLesson() }.keyboardShortcut("s").disabled(!model.ready) }
-            CommandGroup(replacing: .appSettings) { Button(model.l("设置…", "Settings...")) { model.showSettings = true }.keyboardShortcut(",") }
-            CommandGroup(replacing: .appInfo) { Button(model.l("关于英语听写播放器", "About English Dictation Player")) { model.showAbout = true } }
-            CommandGroup(replacing: .help) { Button(model.l("播放器帮助", "Player Help")) { model.showHelp = true } }
-        }
+        let application = NSApplication.shared
+        application.setActivationPolicy(.regular)
+        let delegate = AppDelegate()
+        application.delegate = delegate
+        application.run()
+        withExtendedLifetime(delegate) {}
     }
 }

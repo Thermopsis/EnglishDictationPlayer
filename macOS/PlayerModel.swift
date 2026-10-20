@@ -37,7 +37,7 @@ final class Playback {
 }
 
 final class PlayerModel: ObservableObject {
-    @Published var prefs = Preferences.load() { didSet { prefs.save() } }
+    @Published var prefs = Preferences.load() { didSet { prefs.save(); (NSApp?.delegate as? AppDelegate)?.refreshAppearance() } }
     @Published var audio: AudioAnalysis?
     @Published var segments = [Phrase]()
     @Published var index = -1
@@ -278,9 +278,64 @@ final class WindowDelegate: NSObject, NSWindowDelegate {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    weak var model: PlayerModel?
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
+    var model: PlayerModel?
+    var window: NSWindow?
+    let windowDelegate = WindowDelegate()
     var pending: URL?
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Application launch") }
+        let model = PlayerModel(); self.model = model
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1020, height: 650), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        self.window = window
+        window.isReleasedWhenClosed = false; window.setFrameAutosaveName("MainWindow")
+        window.contentView = NSHostingView(rootView: MainView(model: model))
+        windowDelegate.model = model; window.delegate = windowDelegate
+        window.minSize = NSSize(width: 990, height: 640); window.center()
+        refreshAppearance(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        if CommandLine.arguments.contains("--ui-smoke") { UISmoke.note("Window created") }
+        if let url = pending { pending = nil; model.load(url) }
+        else if let i = CommandLine.arguments.firstIndex(of: "--open"), i + 1 < CommandLine.arguments.count { model.load(URL(fileURLWithPath: CommandLine.arguments[i + 1])) }
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func refreshAppearance() {
+        guard let model = model else { return }
+        NSApp.appearance = NSAppearance(named: model.prefs.dark ? .darkAqua : .aqua)
+        window?.title = model.l("英语听写播放器", "English Dictation Player")
+        let root = NSMenu()
+        func submenu(_ title: String) -> NSMenu {
+            let item = NSMenuItem(); let menu = NSMenu(title: title); item.submenu = menu; root.addItem(item); return menu
+        }
+        func action(_ menu: NSMenu, _ title: String, _ selector: Selector, _ key: String = "") {
+            let item = NSMenuItem(title: title, action: selector, keyEquivalent: key); item.target = self; menu.addItem(item)
+        }
+        let app = submenu(model.l("英语听写播放器", "English Dictation Player"))
+        action(app, model.l("关于英语听写播放器", "About English Dictation Player"), #selector(about))
+        app.addItem(.separator()); action(app, model.l("设置…", "Settings..."), #selector(settings), ",")
+        app.addItem(.separator()); action(app, model.l("退出", "Quit"), #selector(quit), "q")
+        let file = submenu(model.l("文件", "File"))
+        action(file, model.l("打开音频或课件…", "Open audio or lesson..."), #selector(openAudio), "o")
+        action(file, model.l("保存课件…", "Save lesson..."), #selector(save), "s")
+        action(file, model.l("关闭窗口", "Close window"), #selector(close), "w")
+        let edit = submenu(model.l("编辑", "Edit"))
+        for (title, selector, key) in [(model.l("剪切", "Cut"), #selector(NSText.cut(_:)), "x"), (model.l("复制", "Copy"), #selector(NSText.copy(_:)), "c"), (model.l("粘贴", "Paste"), #selector(NSText.paste(_:)), "v"), (model.l("全选", "Select all"), #selector(NSText.selectAll(_:)), "a")] {
+            edit.addItem(NSMenuItem(title: title, action: selector, keyEquivalent: key))
+        }
+        let help = submenu(model.l("帮助", "Help")); action(help, model.l("播放器帮助", "Player Help"), #selector(helpAction))
+        NSApp.mainMenu = root; NSApp.helpMenu = help
+    }
+    @objc func openAudio() { model?.openPanel() }
+    @objc func save() { model?.saveLesson() }
+    @objc func settings() { model?.showSettings = true }
+    @objc func about() { model?.showAbout = true }
+    @objc func helpAction() { model?.showHelp = true }
+    @objc func close() { window?.performClose(nil) }
+    @objc func quit() { NSApp.terminate(nil) }
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(save) { return model?.ready == true }
+        if item.action == #selector(openAudio) { return model?.busy == false }
+        return true
+    }
     func application(_ application: NSApplication, open urls: [URL]) { if let url = urls.first { if let model = model { model.load(url) } else { pending = url } } }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if let model = model { if model.busy || !model.confirmDiscard() { return .terminateCancel }; model.cleanup() }
