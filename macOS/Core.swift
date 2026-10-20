@@ -45,22 +45,23 @@ struct AudioAnalysis {
         let frameSize = max(1, Int(format.sampleRate / 100))
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameSize * 100)) else { throw Failure("无法分析音频。", "Cannot analyze audio.") }
         var energy = [Float](), peaks = [Float]()
+        var windowSum = 0.0, windowPeak: Float = 0, windowFrames = 0
         while file.framePosition < file.length {
             try file.read(into: buffer)
             guard buffer.frameLength > 0, let channels = buffer.floatChannelData else { break }
             let count = Int(buffer.frameLength)
-            for start in stride(from: 0, to: count, by: frameSize) {
-                let end = min(count, start + frameSize)
-                var sum = 0.0, peak: Float = 0
-                for i in start..<end {
-                    var sample: Float = 0
-                    for c in 0..<Int(format.channelCount) { sample += channels[c][i] }
-                    sample /= Float(format.channelCount)
-                    sum += Double(sample * sample); peak = max(peak, abs(sample))
+            for i in 0..<count {
+                var sample: Float = 0
+                for c in 0..<Int(format.channelCount) { sample += channels[c][i] }
+                sample /= Float(format.channelCount)
+                windowSum += Double(sample * sample); windowPeak = max(windowPeak, abs(sample)); windowFrames += 1
+                if windowFrames == frameSize {
+                    energy.append(Float(sqrt(windowSum / Double(windowFrames)))); peaks.append(windowPeak)
+                    windowSum = 0; windowPeak = 0; windowFrames = 0
                 }
-                energy.append(Float(sqrt(sum / Double(end - start)))); peaks.append(peak)
             }
         }
+        if windowFrames > 0 { energy.append(Float(sqrt(windowSum / Double(windowFrames)))); peaks.append(windowPeak) }
         let duration = Double(file.length) / format.sampleRate
         guard duration > 0 else { throw Failure("音频没有可播放的内容。", "The audio is empty.") }
         return Self(url: url, duration: duration, step: Double(frameSize) / format.sampleRate, energy: energy, peaks: peaks)
@@ -215,11 +216,23 @@ enum LessonFile {
         process.standardError = errors
         let pipe = Pipe(); var target: FileHandle?
         if let output = output {
-            FileManager.default.createFile(atPath: output.path, contents: nil); target = try FileHandle(forWritingTo: output); process.standardOutput = target
-        } else { process.standardOutput = pipe }
+            FileManager.default.createFile(atPath: output.path, contents: nil); target = try FileHandle(forWritingTo: output)
+        }
+        defer { try? target?.close() }
+        process.standardOutput = pipe
         try process.run()
-        let data = output == nil ? pipe.fileHandleForReading.readDataToEndOfFile() : Data()
-        process.waitUntilExit(); try? target?.close()
+        var data = Data(), count: Int64 = 0
+        let limit: Int64 = output == nil ? 4 * 1024 * 1024 : 2 * 1024 * 1024 * 1024
+        do {
+            while true {
+                let part = pipe.fileHandleForReading.readData(ofLength: 65536)
+                if part.isEmpty { break }
+                count += Int64(part.count)
+                if count > limit { throw Failure("课件内容超过大小限制。", "Lesson content exceeds the size limit.") }
+                if let target = target { try target.write(contentsOf: part) } else { data.append(part) }
+            }
+        } catch { process.terminate(); process.waitUntilExit(); throw error }
+        process.waitUntilExit()
         guard process.terminationStatus == 0 else { throw Failure("课件读写失败，请检查文件。", "Could not read or write the lesson.") }
         return data
     }

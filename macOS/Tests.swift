@@ -30,7 +30,7 @@ enum MacTests {
         check("WAV decode with bounded memory, energy analysis and default segmentation") {
             try fixture(wav)
             let audio = try AudioAnalysis.load(wav)
-            try require(abs(audio.duration - 10) < 0.001 && audio.energy.count == 1000, "WAV analysis")
+            try require(abs(audio.duration - 10) < 0.001 && audio.energy.count == 1000, "WAV analysis duration=\(audio.duration), frames=\(audio.energy.count), step=\(audio.step)")
             let phrases = Segmenter.split(audio, Preferences())
             try require(phrases.count >= 2 && phrases.first!.start <= 0.71 && phrases.allSatisfy { $0.duration <= 8.001 }, "default phrases")
         }
