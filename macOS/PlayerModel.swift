@@ -230,7 +230,7 @@ final class PlayerModel: ObservableObject {
         else if playing { playback.togglePause(); paused = playback.paused }
         else { begin() }
     }
-    func begin(whole: Bool = false) { guard ready, whole || selection != nil else { return }; stop(); completed = 0; wholeFile = whole; playing = true; startClip() }
+    func begin(whole: Bool = false) { guard ready, whole || selection != nil else { return }; stop(); completed = 0; wholeFile = whole; if whole { viewStart = 0 }; playing = true; startClip() }
     func changeRate(_ rate: Double) {
         let current = playback.position, wasPaused = paused
         prefs.speed = rate
