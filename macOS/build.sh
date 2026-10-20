@@ -25,4 +25,8 @@ codesign --force --sign - "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 lipo -info "$APP/Contents/MacOS/DictationPlayer"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/EnglishDictationPlayer-Mac-Universal.zip"
-shasum -a 256 "$OUT/EnglishDictationPlayer-Mac-Universal.zip" > "$OUT/SHA256SUMS.txt"
+mkdir -p "$OUT/build/installer"
+ditto "$APP" "$OUT/build/installer/English Dictation Player.app"
+ln -s /Applications "$OUT/build/installer/Applications" 2>/dev/null || true
+hdiutil create -volname "English Dictation Player" -srcfolder "$OUT/build/installer" -ov -format UDZO "$OUT/EnglishDictationPlayer-Mac-Universal.dmg"
+(cd "$OUT" && shasum -a 256 EnglishDictationPlayer-Mac-Universal.zip EnglishDictationPlayer-Mac-Universal.dmg > SHA256SUMS.txt)

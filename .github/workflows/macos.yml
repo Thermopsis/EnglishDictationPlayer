@@ -37,6 +37,7 @@ jobs:
           name: macOS-${{ matrix.os }}
           path: |
             macOS/dist/*.zip
+            macOS/dist/*.dmg
             macOS/dist/*.txt
             macOS/dist/*.png
             macOS/dist/tests/*.edlesson
