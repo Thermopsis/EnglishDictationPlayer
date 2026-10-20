@@ -2,63 +2,15 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-struct WaveformView: View {
+struct WaveformView: NSViewRepresentable {
     @ObservedObject var model: PlayerModel
-    @State private var dragging: (Double, Double)?
-    func time(_ x: Double, width: Double) -> Double { min(model.audio?.duration ?? 0, max(0, model.viewStart + (x - 18) * model.viewLength / max(1, width - 36))) }
-    var body: some View {
-        GeometryReader { geometry in
-            Canvas { context, size in
-                guard let audio = model.audio else {
-                    context.draw(Text(model.l("打开一段音频，开始逐段听写", "Open audio to start phrase dictation")).foregroundColor(.secondary), at: CGPoint(x: size.width / 2, y: size.height / 2)); return
-                }
-                let width = size.width - 36, bottom = size.height - 30, center = bottom / 2 + 5
-                func x(_ t: Double) -> Double { 18 + (t - model.viewStart) * width / model.viewLength }
-                var plot = context; plot.clip(to: Path(CGRect(x: 18, y: 10, width: width, height: bottom - 10)))
-                var guide = Path(); guide.move(to: CGPoint(x: 18, y: center)); guide.addLine(to: CGPoint(x: size.width - 18, y: center))
-                for phrase in model.segments where phrase.start >= model.viewStart && phrase.start <= model.viewStart + model.viewLength { guide.move(to: CGPoint(x: x(phrase.start), y: 10)); guide.addLine(to: CGPoint(x: x(phrase.start), y: bottom)) }
-                plot.stroke(guide, with: .color(.secondary.opacity(0.17)))
-                func highlight(_ p: Phrase) {
-                    plot.fill(Path(CGRect(x: x(p.start), y: 10, width: max(1, x(p.end) - x(p.start)), height: bottom - 10)), with: .color(.teal.opacity(0.15)))
-                    var edges = Path(); for t in [p.start, p.end] { edges.move(to: CGPoint(x: x(t), y: 10)); edges.addLine(to: CGPoint(x: x(t), y: bottom)) }
-                    plot.stroke(edges, with: .color(.teal), lineWidth: 1.5)
-                }
-                if let p = model.selection { highlight(p) }
-                if let range = dragging { highlight(Phrase(start: min(range.0, range.1), end: max(range.0, range.1))) }
-                var waveform = Path()
-                for pixel in 0..<max(1, Int(width)) {
-                    let t = model.viewStart + Double(pixel) * model.viewLength / width
-                    let a = max(0, min(audio.peaks.count, Int(t / audio.step)))
-                    let b = min(audio.peaks.count, max(a + 1, Int((t + model.viewLength / width) / audio.step)))
-                    var peak: Float = 0
-                    if a < b { for i in a..<b { peak = max(peak, audio.peaks[i]) } }
-                    let height = max(0.4, sqrt(Double(peak)) * max(5, center - 22))
-                    waveform.move(to: CGPoint(x: 18 + Double(pixel), y: center - height)); waveform.addLine(to: CGPoint(x: 18 + Double(pixel), y: center + height))
-                }
-                plot.stroke(waveform, with: .color(model.prefs.dark ? Color(red: 0.68, green: 0.81, blue: 0.85) : Color(red: 0.16, green: 0.31, blue: 0.36)))
-                if let t = model.editCursor { var line = Path(); line.move(to: CGPoint(x: x(t), y: 10)); line.addLine(to: CGPoint(x: x(t), y: bottom)); plot.stroke(line, with: .color(.secondary), style: StrokeStyle(lineWidth: 1, dash: [3])) }
-                if let t = model.cursor { var line = Path(); line.move(to: CGPoint(x: x(t), y: 10)); line.addLine(to: CGPoint(x: x(t), y: bottom)); plot.stroke(line, with: .color(.orange), lineWidth: 2) }
-                let tick = model.viewLength <= 8 ? 1.0 : model.viewLength <= 40 ? 5.0 : model.viewLength <= 160 ? 20.0 : ceil(model.viewLength / 480) * 60
-                for t in stride(from: ceil(model.viewStart / tick) * tick, through: model.viewStart + model.viewLength, by: tick) {
-                    context.draw(Text(timeLabel(t)).font(.system(size: 11, design: .monospaced)).foregroundColor(.secondary), at: CGPoint(x: min(size.width - 24, max(24, x(t))), y: size.height - 12))
-                }
-            }
-            .background(model.prefs.dark ? Color(nsColor: .controlBackgroundColor) : .white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .gesture(DragGesture(minimumDistance: 0).onChanged { value in
-                guard model.ready else { return }
-                dragging = (time(value.startLocation.x, width: geometry.size.width), time(value.location.x, width: geometry.size.width))
-            }.onEnded { value in
-                defer { dragging = nil }; guard model.ready else { return }
-                let a = time(value.startLocation.x, width: geometry.size.width), b = time(value.location.x, width: geometry.size.width)
-                if abs(value.translation.width) < 5 { model.click(b) } else { model.select(a, b) }
-            })
-            .simultaneousGesture(MagnificationGesture().onEnded { model.zoom(1 / $0) })
-            .accessibilityLabel(model.l("音频波形，单击选段，拖动选区", "Audio waveform: click a phrase or drag a range"))
-        }
+    func makeNSView(context: Context) -> NativeWaveform {
+        let view = NativeWaveform(); view.model = model
+        view.setAccessibilityLabel(model.l("音频波形，单击选段，拖动选区", "Audio waveform: click a phrase or drag a range"))
+        return view
     }
+    func updateNSView(_ view: NativeWaveform, context: Context) { view.model = model; view.needsDisplay = true }
 }
-
 struct MainView: View {
     @ObservedObject var model: PlayerModel
     var body: some View {

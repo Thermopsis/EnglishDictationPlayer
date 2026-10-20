@@ -16,7 +16,10 @@ enum UISmoke {
     static func note(_ message: String) { print("UI: \(message)"); fflush(stdout) }
     static func snapshot(_ name: String) {
         note("Snapshot \(name)")
-        guard let window = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 700 }) else { fail("No visible application window"); return }
+        guard let main = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 700 }) else { fail("No visible application window"); return }
+        let needsSheet = name.hasPrefix("settings-") || name.hasPrefix("segmentation-")
+        if needsSheet && main.sheets.isEmpty { fail("Expected settings sheet was not presented"); return }
+        let window = needsSheet ? main.sheets[0] : main
         window.displayIfNeeded()
         if let view = window.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
             view.cacheDisplay(in: view.bounds, to: bitmap)

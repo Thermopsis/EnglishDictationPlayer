@@ -8,7 +8,7 @@ SDK="$(xcrun --sdk macosx --show-sdk-path)"
 for ARCH in arm64 x86_64; do
   xcrun swiftc -swift-version 5 -O -sdk "$SDK" -target "${ARCH}-apple-macos13.0" \
     -framework SwiftUI -framework AppKit -framework AVFoundation \
-    "$ROOT/Core.swift" "$ROOT/PlayerModel.swift" "$ROOT/Views.swift" "$ROOT/Tests.swift" "$ROOT/UISmoke.swift" \
+    "$ROOT/Core.swift" "$ROOT/PlayerModel.swift" "$ROOT/Views.swift" "$ROOT/NativeWaveform.swift" "$ROOT/Tests.swift" "$ROOT/UISmoke.swift" \
     -o "$OUT/build/DictationPlayer-$ARCH"
 done
 lipo -create "$OUT/build/DictationPlayer-arm64" "$OUT/build/DictationPlayer-x86_64" -output "$APP/Contents/MacOS/DictationPlayer"

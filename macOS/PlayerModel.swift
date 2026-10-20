@@ -37,7 +37,7 @@ final class Playback {
 }
 
 final class PlayerModel: ObservableObject {
-    @Published var prefs = Preferences.load() { didSet { prefs.save(); (NSApp?.delegate as? AppDelegate)?.refreshAppearance() } }
+    @Published var prefs = Preferences.load() { didSet { prefs.save(); if oldValue.language != prefs.language { status = l("设置已保存", "Settings saved") }; (NSApp?.delegate as? AppDelegate)?.refreshAppearance() } }
     @Published var audio: AudioAnalysis?
     @Published var segments = [Phrase]()
     @Published var index = -1
@@ -223,7 +223,7 @@ final class PlayerModel: ObservableObject {
         viewLength = min(audio.duration, max(min(2, audio.duration), viewLength * factor)); viewStart = max(0, min(audio.duration - viewLength, anchor - viewLength / 2))
     }
     func fit() { if let audio = audio { viewStart = 0; viewLength = audio.duration } }
-    func stop() { playback.stop(); playing = false; waiting = false; paused = false; wholeFile = false; cursor = nil }
+    func stop() { playback.stop(); playing = false; waiting = false; paused = false; wholeFile = false; cursor = nil; status = l("已停止", "Stopped") }
     func toggle() {
         guard ready else { return }
         if waiting { stop() }
