@@ -9,3 +9,5 @@ Thumbs.db
 Desktop.ini
 .env
 .env.*
+
+/macOS/dist/

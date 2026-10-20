@@ -1,0 +1,44 @@
+name: Build and verify macOS app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, macos-app]
+    paths: ['macOS/**', '.github/workflows/macos.yml']
+permissions:
+  contents: read
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build universal application and verify signature
+        run: bash macOS/build.sh
+      - name: Run native audio and lesson tests
+        env:
+          TEST_OUTPUT: ${{ github.workspace }}/macOS/dist/tests
+          WINDOWS_LESSON: ${{ github.workspace }}/macOS/fixtures/windows-v1.1.edlesson
+        run: |
+          set -o pipefail
+          macOS/dist/English\ Dictation\ Player.app/Contents/MacOS/DictationPlayer --self-test | tee macOS/dist/SELF_TEST.txt
+      - name: Launch real macOS window
+        run: |
+          APP="$PWD/macOS/dist/English Dictation Player.app"
+          open -n "$APP" --args --open "$PWD/macOS/fixtures/windows-v1.1.edlesson"
+          sleep 5
+          pgrep -x DictationPlayer
+          /usr/sbin/screencapture -x macOS/dist/main-window.png || true
+          pkill -x DictationPlayer || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-${{ matrix.os }}
+          path: |
+            macOS/dist/*.zip
+            macOS/dist/*.txt
+            macOS/dist/*.png
+            macOS/dist/tests/*.edlesson
