@@ -28,11 +28,9 @@ jobs:
       - name: Launch real macOS window
         run: |
           APP="$PWD/macOS/dist/English Dictation Player.app"
-          open -n "$APP" --args --open "$PWD/macOS/fixtures/windows-v1.1.edlesson"
-          sleep 5
-          pgrep -x DictationPlayer
-          /usr/sbin/screencapture -x macOS/dist/main-window.png || true
-          pkill -x DictationPlayer || true
+          open -n -W "$APP" --args --open "$PWD/macOS/fixtures/windows-v1.1.edlesson" --ui-smoke --ui-output "$PWD/macOS/dist"
+          cat macOS/dist/UI_TEST.txt
+          grep -q 'PASS settings and segmentation sheets' macOS/dist/UI_TEST.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -142,7 +142,7 @@ struct MainView: View {
                 ForEach([1, 2, 3, 5, 10, 0], id: \.self) { n in Text(n == 0 ? model.l("无限", "Infinite") : "\(n)").tag(n) }
             }.frame(width: 145)
             Text(model.l("间隔", "Gap"))
-            TextField("", value: $model.prefs.gap, format: .number.precision(.fractionLength(1))).frame(width: 45).onSubmit { model.prefs.gap = min(30, max(0, model.prefs.gap)) }.disabled(model.prefs.adaptive)
+            TextField("", value: Binding(get: { model.prefs.gap }, set: { model.prefs.gap = $0.isFinite ? min(30, max(0, $0)) : 1 }), format: .number.precision(.fractionLength(1))).frame(width: 45).disabled(model.prefs.adaptive)
             Text("s").foregroundStyle(.secondary)
             Toggle(model.l("播完进入下一段", "Auto next"), isOn: $model.prefs.autoNext)
             Spacer(minLength: 0)
@@ -217,7 +217,7 @@ struct SegmentationView: View {
             }.formStyle(.grouped)
             Text(model.l("按声音和停顿分段，不识别文字。短词可合并，长停顿不强行连接。重新分段会替换当前片段，请先保存课件。", "Splits by energy and pauses, without speech recognition. Short phrases can be merged; long silences stay separate. Resegment replaces current phrases: save your lesson first.")).font(.callout).foregroundStyle(.secondary)
             HStack { Spacer(); Button(model.l("取消", "Cancel")) { dismiss() }.keyboardShortcut(.cancelAction); Button(model.l("重新分段", "Resegment")) {
-                guard draft.minLength.isFinite, draft.maxLength.isFinite, draft.minLength >= 0.2, draft.maxLength <= 30, draft.minLength <= draft.maxLength, (0...1).contains(draft.leading), (0.15...1.5).contains(draft.silence), (-45 ... -10).contains(draft.sensitivity) else { model.report(Failure("请检查时长区间和分段参数。", "Please check the duration interval and segmentation values.")); return }
+                guard draft.minLength.isFinite, draft.maxLength.isFinite, draft.minLength >= 0.2, draft.maxLength >= 2, draft.maxLength <= 30, draft.minLength <= draft.maxLength, (0...1).contains(draft.leading), (0.15...1.5).contains(draft.silence), (-45 ... -10).contains(draft.sensitivity) else { model.report(Failure("请检查时长区间和分段参数。", "Please check the duration interval and segmentation values.")); return }
                 model.prefs = draft; model.resegment(); dismiss()
             }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction) }
         }.padding(24).frame(width: 570, height: 640).preferredColorScheme(model.prefs.dark ? .dark : .light)

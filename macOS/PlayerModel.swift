@@ -84,7 +84,7 @@ final class PlayerModel: ObservableObject {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, !self.showSettings, !self.showSegmentation, !self.showHelp, !self.showAbout, !self.busy, NSApp.modalWindow == nil else { return event }
-            if NSApp.keyWindow?.firstResponder is NSTextView { return event }
+            if NSApp.keyWindow?.firstResponder is NSTextView || NSApp.keyWindow?.firstResponder is NSPopUpButton || NSApp.keyWindow?.firstResponder is NSSlider { return event }
             guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
             switch event.keyCode {
             case 49: self.toggle(); return nil
@@ -105,6 +105,7 @@ final class PlayerModel: ObservableObject {
         return alert.runModal() == .alertSecondButtonReturn
     }
     func report(_ error: Error) {
+        if CommandLine.arguments.contains("--ui-smoke") { UISmoke.fail(error.localizedDescription); return }
         let alert = NSAlert(); alert.messageText = l("操作失败", "Operation failed"); alert.informativeText = error.localizedDescription; alert.runModal()
     }
     func openPanel() {
@@ -117,6 +118,7 @@ final class PlayerModel: ObservableObject {
     func load(_ url: URL) {
         guard !busy, confirmDiscard() else { return }
         stop(); busy = true; status = l("正在分析音频…", "Analyzing audio...")
+        let settings = prefs
         DispatchQueue.global(qos: .userInitiated).async {
             var opened: LessonFile.Opened?
             do {
@@ -124,6 +126,7 @@ final class PlayerModel: ObservableObject {
                 let result = try AudioAnalysis.load(opened?.audio ?? url)
                 if let opened = opened, abs(result.duration - opened.manifest.duration) > 0.1 { throw Failure("课件音频长度不匹配。", "Lesson duration does not match the audio.") }
                 let lesson = opened
+                let automatic = lesson == nil ? Segmenter.split(result, settings) : []
                 DispatchQueue.main.async {
                     if let dir = self.extractedDirectory { try? FileManager.default.removeItem(at: dir) }
                     self.extractedDirectory = lesson?.directory
@@ -135,10 +138,11 @@ final class PlayerModel: ObservableObject {
                         self.segments = lesson.manifest.segments; self.index = lesson.manifest.selected; self.manual = lesson.manifest.manual
                         self.status = self.l("已恢复课件：\(self.segments.count) 段，未重新自动分段。", "Restored \(self.segments.count) phrases without resegmenting.")
                     } else {
-                        self.segments = Segmenter.split(result, self.prefs); self.index = self.segments.isEmpty ? -1 : 0; self.manual = nil
+                        self.segments = automatic; self.index = self.segments.isEmpty ? -1 : 0; self.manual = nil
                         self.status = self.l("已分为 \(self.segments.count) 段。单击选段，拖动选区。", "Split into \(self.segments.count) phrases. Click to select; drag for a manual range.")
                     }
                     self.dirty = false; self.showSelection()
+                    if CommandLine.arguments.contains("--ui-smoke") { UISmoke.run(self) }
                 }
             } catch {
                 if let dir = opened?.directory { try? FileManager.default.removeItem(at: dir) }
@@ -148,7 +152,7 @@ final class PlayerModel: ObservableObject {
     }
     func saveLesson() {
         guard ready, let audio = audio else { return }
-        let panel = NSSavePanel(); panel.allowedContentTypes = [UTType(filenameExtension: "edlesson")!]
+        let panel = NSSavePanel(); panel.allowedContentTypes = [UTType(filenameExtension: "edlesson") ?? UTType(importedAs: "com.thermoxu.edlesson", conformingTo: .data)]
         panel.nameFieldStringValue = lessonURL?.lastPathComponent ?? (URL(fileURLWithPath: originalName).deletingPathExtension().lastPathComponent + ".edlesson")
         panel.title = l("保存课件", "Save lesson")
         guard panel.runModal() == .OK, let url = panel.url else { return }
